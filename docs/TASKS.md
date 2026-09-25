@@ -49,7 +49,7 @@
 - [x] **C-005** 저장소 기본 폴더 구조 생성
 - [x] **C-006** `.env.example` 생성 및 환경변수 명칭 확정
 - [x] **C-007** Lint / Jest 기본 설정
-- [~] **C-008** Frontend / Backend Git Branch 또는 Worktree 준비
+- [x] **C-008** Frontend / Backend Git Branch 또는 Worktree 준비
 - [x] **C-009** Mock API가 실제 API와 동일한 Contract를 사용하도록 기본 Adapter 구조 정의
 
 ## 공통 작업 완료 기준
@@ -65,7 +65,7 @@
 
 | 영역 | 상태 | 상세 문서 |
 |---|---|---|
-| 공통 기반 | 진행 중 | 이 문서의 `0. 공통 선행 작업` |
+| 공통 기반 | 완료 | 이 문서의 `0. 공통 선행 작업` |
 | 프론트엔드 | 대기 | `docs/tasks/FRONTEND_TASKS.md` |
 | 백엔드 | 대기 | `docs/tasks/BACKEND_TASKS.md` |
 | 통합 | 대기 | `docs/tasks/INTEGRATION_TASKS.md` |
@@ -100,7 +100,6 @@
 
 # 3. 추가 결정 필요
 
-- [!] C-008은 현재 작업 폴더에 Git 메타데이터가 없어 Branch/Worktree를 만들 수 없음. Git 저장소를 제공하거나 이 항목을 생략할지 결정 필요
 - [!] 과거에 기록이 전혀 없는 날짜를 사용자가 새로 작성할 수 있게 할지
 - [!] 공개 전 개인정보 / AI 처리 안내 최종 문구
 - [!] 운영 오류 모니터링 / Analytics 도구를 사용할 경우 건강 원문 제거 설정
