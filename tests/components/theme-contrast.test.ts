@@ -75,15 +75,27 @@ describe("I6-608 다크모드 대비", () => {
     expect(contrast("#191919", "#fee500")).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("카카오 버튼은 준비 중이어도 브랜드 색을 덮어쓰지 않는다", () => {
-    const disabled = css.match(/\.login-btn--kakao\.is-disabled\s*\{[^}]+\}/)?.[0] ?? "";
+  it("카카오 버튼은 준비 중일 때 활성 버튼과 구분된다", () => {
+    const disabled = css.match(/\.login-btn--kakao\.is-disabled[^{]*\{[^}]+\}/)?.[0] ?? "";
 
-    expect(disabled).toContain("#fee500");
-    expect(disabled).toContain("#191919");
     expect(disabled).toContain("cursor: not-allowed");
-    // 흐림을 너무 주면 브랜드 버튼처럼 보이지 않는다.
-    const opacity = Number(disabled.match(/opacity:\s*([\d.]+)/)?.[1] ?? "0");
-    expect(opacity).toBeGreaterThanOrEqual(0.8);
+    // 비활성인데 브랜드 노랑을 그대로 쓰면 활성 Google 버튼과 무게감이 같아
+    // 눌러도 비활성처럼 보이지 않는다. 채도/명도를 낮춘 톤으로 물러뜨린다.
+    expect(disabled).not.toContain("#fee500");
+    const bg = disabled.match(/background-color:\s*(#[0-9a-f]{6})/i)?.[1] ?? "";
+    const fg = disabled.match(/color:\s*(#[0-9a-f]{6})/i)?.[1] ?? "";
+    expect(bg).toMatch(/^#[0-9a-f]{6}$/i);
+    expect(fg).toMatch(/^#[0-9a-f]{6}$/i);
+    // 비활성 글씨는 읽을 수 있어야 한다(WCAG AA).
+    expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
+    // 비활성 배경은 활성 배경보다 어두워야(active보다 약하게 보인다).
+    expect(luminance(bg)).toBeLessThan(luminance("#fee500"));
+  });
+
+  it("비활성 카카오 버튼은 hover 로도 밝아지지 않는다", () => {
+    // disabled 버튼에도 :hover 가 매칭돼 브랜드 노랑으로 밝아지면
+    // 오히려 사용 가능한 것처럼 보이므로 hover 규칙까지 함께 덮어써야 한다.
+    expect(css).toMatch(/\.login-btn--kakao\.is-disabled,\s*\n\s*\.login-btn--kakao\.is-disabled:hover\s*\{/);
   });
 
   it("로그인 버튼 아이콘은 브랜드 공식 마크를 유지한다", () => {
@@ -95,7 +107,7 @@ describe("I6-608 다크모드 대비", () => {
     const googleFills = [...googleIcon.matchAll(/fill="(#[0-9A-Fa-f]{6})"/g)].map((m) => m[1].toUpperCase());
     expect(googleFills).toEqual(["#4285F4", "#34A853", "#FBBC05", "#EB4335"]);
 
-    expect(kakaoIcon).toContain('fill="#191919"');
+    expect(kakaoIcon).toContain('fill="currentColor"');
     // 닫힌 단일 path여야 한다 (여러 조각으로 쪼개지면 말풍선 윤곽이 깨진다).
     expect([...kakaoIcon.matchAll(/<path/g)]).toHaveLength(1);
     expect(kakaoIcon).toMatch(/d="[^"]*Z"/);

@@ -777,13 +777,17 @@ body {
 .login-btn--kakao:hover {
   background-color: #f5d900;
 }
-/* 준비 중인 카카오 버튼도 브랜드 색은 유지하고, 비활성 affordance만 준다. */
-.login-btn--kakao.is-disabled {
-  opacity: 0.82;
+/* 준비 중인 카카오 버튼.
+   브랜드 노랑을 그대로 두면 활성 Google 버튼과 무게감이 같아 눌러도
+   비활성처럼 보이지 않는다. 카카오임은 색상 유지로 남기고, 채도와 명도만
+   낮춘 "꺼진 노랑" + 회색 글씨로 물러뜨린다. 완전히 무채색으로 바꾸면
+   브랜드 버튼으로 인식되지 않으므로 하지 않는다. */
+.login-btn--kakao.is-disabled,
+.login-btn--kakao.is-disabled:hover {
   cursor: not-allowed;
-  color: #191919;
-  background-color: #fee500;
-  border-color: #fee500;
+  color: #5a5a51;
+  background-color: #e0dab2;
+  border-color: #e0dab2;
 }
 .login-btn--explore {
   border: 1px solid var(--border);
