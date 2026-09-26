@@ -341,7 +341,7 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 - [x] **I-712** 진료 준비 전체 흐름 검증
 - [x] **I-713** 삭제 확인 전체 흐름 검증
 - [~] **I-714** 개인정보/AI 처리 안내 문구 — Supabase Free 선택 반영, 별도 백업·보존 정책·최종 승인·동의 방식 확인 대기
-- [~] **I-715** Production 환경변수 — 6/7 등록; 로컬 `OPENAI_API_KEY`는 설정됨, Production에는 미등록
+- [x] **I-715** Production 환경변수 — 7/7 등록, `OPENAI_API_KEY` Production 등록 확인(값 비노출)
 - [~] **I-716** 배포 준비 완료 표시 — 최종 배포 게이트 정합 및 설정 준비 중
 - [~] **I-717** B-613 rate limit — 규칙 게시 완료, 배포 후 429 상태·본문 검증 대기 (`docs/SECURITY.md` 10절)
 
@@ -394,9 +394,9 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 
 - **I-714 / 개인정보 및 백업:** 사용자가 Supabase Free 유지를 결정했다. 안내 문구는 UI에 반영됐지만 최종 승인은 남아 있다. Free에는 보장된/대시보드에서 내려받을 수 있는 일일 백업 기능이 포함되지 않지만, Supabase FAQ는 Free 프로젝트에도 최대 7개의 일일 백업이 생성돼 업그레이드 후 이용 가능할 수 있다고 안내한다. 프로젝트 백업의 존재·기간은 확인하지 않았다. Free 선택에 맞는 별도 백업·복구 방식을 마련하고 실제 보존 기간을 확인하기 전에는 고지에 기간 숫자를 추가하지 않는다([백업 안내](https://supabase.com/docs/guides/platform/backups), [Free 프로젝트 FAQ](https://supabase.com/docs/guides/troubleshooting/will-backups-be-accessible-from-the-dashboard-immediately-after-upgrading-to-a-paid-plan-hXY4rs)). PRD 9-3 동의 방식과 구현도 결정 전이다.
 - **인증 보안:** 원격 Auth 설정은 email과 Google이 모두 켜져 있고 `disable_signup=false`다. `auth_leaked_password_protection` Advisor 경고가 남아 있으며 현재 Free 플랜에서는 해당 보호 설정을 사용할 수 없다([Supabase 문서](https://supabase.com/docs/guides/auth/password-security)). 인증 제공자를 변경하거나 유료 플랜으로 올리지는 않았다. Advisor의 `SECURITY DEFINER` 경고 10건은 함수별로 확인했다: 전부 빈 `search_path`, `auth.uid()` 검증, authenticated 실행 허용, anon 실행 거부가 적용돼 있다. Performance Advisor 경고는 없었다.
-- **I-715 / Vercel Production:** `health-record` 프로젝트를 `exifio-4593s-projects`에 만들고 Next.js로 연결했다. Production 변수 6개를 등록했다: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_USE_MOCK=false`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_MODEL`, `CRON_SECRET`. Secret 두 개는 sensitive로 등록했다. 현재 확인 결과 로컬 `.env.local`에는 `OPENAI_API_KEY`가 설정되어 있지만 Vercel Production에는 없다. 로컬 키를 Production에 재사용할지 또는 전용 키를 사용할지 결정 전까지 등록하지 않는다. 로컬 `.env.local`에는 `OPENAI_BASE_URL`이 없어 Production에도 설정하지 않았다. 아직 Vercel 배포가 없어 Cron 실행은 검증되지 않았다.
+- **I-715 / Vercel Production:** `health-record` 프로젝트를 `exifio-4593s-projects`에 만들고 Next.js로 연결했다. Production 변수 7개를 등록했다: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_USE_MOCK=false`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `CRON_SECRET`. `vercel env list production`에서 `OPENAI_API_KEY`의 Production 대상 등록을 확인했으며 값은 읽거나 출력하지 않았다. Secret 변수는 sensitive로 등록돼 있다. 로컬 `.env.local`에는 `OPENAI_BASE_URL`이 없어 Production에도 설정하지 않았다. 아직 배포 및 Cron 실행은 검증되지 않았다.
 - **I-717 / Firewall:** Vercel CLI로 경로별 rate limit 12개를 만들고 2026-09-27 Production 설정에 게시했다. 전부 IP 기준 fixed window 60초이며 각 요청 한도는 위 표와 같다. 배포된 API 경로가 없어 실제 `429` 발생 및 응답 본문이 비어 있는지는 검증하지 않았다. Vercel은 region별 counter를 사용하므로 전역 quota 보장은 아니다(`docs/SECURITY.md` 10절).
-- **배포 게이트:** 개인정보 문구 승인, Free 플랜에 맞는 별도 백업·복구 및 보존 정책, 동의 방식, email/password 제공자 설정, Production용 `OPENAI_API_KEY`, Production 배포, Cron 및 429 실측이 남아 있다. 기존 로컬 키의 존재는 확인했지만 Production에 복사하지 않았다.
+- **배포 게이트:** 개인정보 문구 승인, Free 플랜에 맞는 별도 백업·복구 및 보존 정책, 동의 방식, email/password 제공자 설정, Production 배포, Cron 및 429 실측이 남아 있다. Production 변수 등록은 I-715에서 완료했다.
 
 ### I7 진행 기록 (2026-09-26)
 
