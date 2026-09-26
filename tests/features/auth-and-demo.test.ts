@@ -4,7 +4,9 @@ import { LoginModal } from "@/components/auth/LoginModal";
 import { DemoModeBanner } from "@/components/auth/DemoModeBanner";
 import { OnboardingNotice } from "@/components/onboarding/OnboardingNotice";
 import { RecordComposer, handleComposerSubmit } from "@/components/records/RecordComposer";
+import { RecordMessage } from "@/components/records/RecordMessage";
 import { RecordTimeline } from "@/components/records/RecordTimeline";
+import { DailySummaryCard } from "@/components/summary/DailySummaryCard";
 import { demoDailyRecordResponse } from "@/mocks/fixtures";
 import { DailyRecordResponseSchema } from "@/contracts";
 
@@ -69,6 +71,40 @@ describe("F1: Login, Demo Mode, Onboarding", () => {
       expect(html).toContain("샘플 데이터가 표시되며, 기록 저장은 로그인 후 이용 가능합니다.");
       expect(html).toContain("로그인하기");
       expect(html).toContain('data-testid="banner-login-btn"');
+    });
+  });
+
+  describe("Demo Mode 읽기 전용 화면 (F-105)", () => {
+    const demoMessage = demoDailyRecordResponse.record.messages[0];
+
+    it("원문 수정/삭제 UI를 노출하지 않는다", () => {
+      const html = renderToStaticMarkup(
+        React.createElement(RecordMessage, { message: demoMessage, canEdit: false })
+      );
+
+      expect(html).toContain(demoMessage.content);
+      expect(html).not.toContain('data-testid="message-edit-btn"');
+      expect(html).not.toContain('data-testid="message-delete-btn"');
+    });
+
+    it("요약 내용은 보여 주고 확정·수정·삭제 동작은 숨긴다", () => {
+      const html = renderToStaticMarkup(
+        React.createElement(DailySummaryCard, {
+          date: "2026-09-25",
+          record: demoDailyRecordResponse.record,
+          readOnly: true,
+          onRetrySummary: async () => {},
+          onUpdateSummary: async () => {},
+          onConfirmRecord: async () => {},
+          onCreateCorrection: async () => {},
+          onDeleteRecord: async () => {},
+        })
+      );
+
+      expect(html).toContain('data-testid="summary-content-area"');
+      expect(html).not.toContain('data-testid="confirm-record-btn"');
+      expect(html).not.toContain('data-testid="edit-summary-btn"');
+      expect(html).not.toContain('data-testid="delete-day-btn"');
     });
   });
 

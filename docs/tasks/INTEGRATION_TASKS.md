@@ -200,9 +200,19 @@ I4는 병행 에이전트가 시작한 뒤 Integration이 인계받아 마무리
 - **I-405**: 정정이 즉시 표시되고 새로고침 후에도 유지되며, 진료 준비(I-5xx)에도 포함된다.
 - 검증용으로 넣은 2026-09-19 기록은 삭제했다.
 
-### I4 인수인계 기록 (2026-09-26, 미완료)
+### I4 인수인계 기록 (2026-09-26 작성 → 2026-09-27 마감)
 
-작업 도중에 중단했다. 아래는 working tree에만 있는 미커밋 변경(`git diff` 6개 파일)과 남은 작업이다.
+작성 시점에 작업 도중 중단해 아래와 같이 미완료로 남겼었다. **2026-09-27에 아래 항목을 모두 정리했다.**
+
+**마감 내역**
+
+- I-401~I-405 실제 API 검증: 위 `I4 진행 기록`의 결과를 이미 반영하고 있다. 이 문서에서 `[x]`로 마감된 상태다.
+- `tests/mocks/mock-health-api.test.ts` 빨간 4건: 해소. 현재 `npx jest`는 모음 포함 전부 통과한다.
+- `retrySummary`의 404/409 정합: **완료(2026-09-27)**. 아래 "재사용 노트"의 마지막 항목을 구현했다.
+
+**재사용 노트(당시 상태 기록 — 더 이상 사실이 아니다)**
+
+이 절의 아래 항목들은 2026-09-26 중간의 상태다. Mock↔Backend 정합을 다시 손볼 때 참고만 하고, 현재 규칙의 근거는 `docs/API.md` 9절과 B7 `retry_daily_summary` 마이그레이션이다.
 
 **이미 반영한 코드 (typecheck 통과, 실제 API 대상 검증은 아직 하지 않음)**
 
@@ -215,24 +225,31 @@ I4는 병행 에이전트가 시작한 뒤 Integration이 인계받아 마무리
   - `confirmRecord`: 같은 순서에 idempotent 재확정 유지. 기존에는 요약 없이도 확정됐고 `confirmedAt`을 응답마다 새로 만들었다.
   - `createCorrection`: 미확정 기록 → 409 `RECORD_NOT_CONFIRMED`(기존에는 아무 검사 없음).
   - 원문 create/delete에도 `ready → stale` 전환을 추가했다(DB 규칙 B1과 동일, updateMessage에만 이미 있었다).
-  - `retrySummary`는 아직 실제와 다르다: 백엔드는 기록 없음 404 `RECORD_NOT_FOUND`, 확정/not_due/ready/processing 상태 409 `SUMMARY_NOT_RETRYABLE`(API.md 6절), pending 중복 202인데 Mock은 무조건 `pending`을 돌려준다. **남은 작업.**
+  - `retrySummary`는 당시 실제와 달랐다: 백엔드는 기록 없음 404 `RECORD_NOT_FOUND`, 확정/not_due/ready/processing 상태 409 `SUMMARY_NOT_RETRYABLE`(API.md 9절), pending 중복 202인데 Mock은 무조건 `pending`을 돌려준다. **→ 2026-09-27에 반영 완료.**
   - Mock 전용 `runSummaryWorker()`를 `MockHealthApi`에 추가했다(실제 B3 스케줄러 대신 draft+claim 가능 record에 초안을 만들어 ready로 만든다). contract 함수가 아니라 화면 코드는 부르지 않는다.
   - `deleteHealthData`/`deleteAccount`가 `confirmedAt`을 비우지 않던 것도 고쳤다.
 
-**지금 빨간 테스트 (`npx jest` → 4 failed / 255 passed)**
+**당시 빨간 테스트 (`npx jest` → 4 failed / 255 passed) — 2026-09-27에 해소**
 
-`tests/mocks/mock-health-api.test.ts` 한 파일에만 있다. 원인은 공통이고, Mock의 default store가 **today fixture 한 개**(2026-09-25, `not_due`, 요약 없음)만 담고 있다는 사실에서 나온다.
+`tests/mocks/mock-health-api.test.ts` 한 파일에만 있었다. 원인은 공통이고, Mock의 default store가 **today fixture 한 개**(2026-09-25, `not_due`, 요약 없음)만 담고 있다는 사실에서 나왔다.
 
 - `createMockHealthApi (F-007)`: flow가 `deleteMessage`로 마지막 메시지를 지우면 record가 store에서 사라진다(B-112 실동작과 일치하는 올바른 동작) → 뒤이은 `updateSummary`가 404. flow를 `customStore`로 `sampleUnreviewedRecordResponse`(draft + ready)를 주입해 다시 쓰거나, 마지막 메시지를 지우기 전에 요약 확정을 끝내는 순서로 바꿔야 한다.
 - 새로 추가한 parity 3건: `ready` 상태의 record가 기본 store에 없어 실패한다(실제로는 `not_due`/404가 나온다). `createMockHealthApi({ records })`에 `sampleUnreviewedRecordResponse.record`를 넣은 Map을 주입해 `ready + draft` 상태를 만들고, stale 전이는 그 record에 `createMessage`를 한 뒤 확인하면 된다.
 - 회고: 요약 3종 규칙만 고치면 될 줄 알았는데 Mock fixture/flow가 그 상태를 만들지 못해 범위가 커졌다. 남은 Mock 작업은 I4 필수 조건은 아니고 I-001 정합 범위로, I4 본문 검증(실제 API)과 분리해서 진행하는 편이 낫다.
 
-**남은 I4 본문 작업**
+**남은 I4 본문 작업 — 2026-09-26에 모두 완료(위 `I4 진행 기록` 참조)**
 
-- I-401/I-402/I-404/I-405: 실제 API 모드(`NEXT_PUBLIC_USE_MOCK=false`, 셸 환경 변수 오염은 I2/I3 기록의 `env -u` 함정 참고)로 dev 서버 + 실브라우저 확인 — 요약 수정 저장 후 재조회 유지, 확정 버튼 → `confirmed`, 확정 후 원문 수정/삭제 차단 및 정정만 허용, 정정 추가 후 재조회 표시. fixture는 I5에서 쓴 방식대로 만들고 검증 후 삭제한다.
-- I-403: 위 코드 수정 상태로 실제 409를 재현해 확인해야 한다(다른 탭에서 확정해 두고 원문 수정 시도).
-- Mock 빨간 테스트 4건 정리, 그리고 `retrySummary`의 404/409 규칙 정합.
-- 완료 후 I-401~I-405를 `[x]`로 바꾸고 위 기록을 검증 결과로 교체한다.
+- I-401/I-402/I-404/I-405: 실제 API 모드(`NEXT_PUBLIC_USE_MOCK=false`, 셸 환경 변수 오염은 I2/I3 기록의 `env -u` 함정 참고)로 dev 서버 + 실브라우저에서 확인했다. 검증 후 fixture는 삭제했다.
+- I-403: 확정 후 실제 409 `RECORD_CONFIRMED`를 재현해 확인했다.
+- Mock 빨간 테스트 4건 정리, `retrySummary`의 404/409 규칙 정합까지 완료.
+- I-401~I-405는 `[x]`로 마감했고 이 기록은 검증 결과로 교체했다.
+
+**2026-09-27 추가 정합(문서에 `[x]`로 남아 있던 마지막 코드 차이)**
+
+- `retrySummary` Mock 정합: `docs/API.md` 9절과 B7 `retry_daily_summary` RPC를 그대로 따라 404 `RECORD_NOT_FOUND`(기록 없음) → 409 `SUMMARY_NOT_RETRYABLE`(확정/`not_due`/`processing`/`ready`) → 그 외 `pending` 되돌림 순서로 거절하도록 고쳤다. 재시도는 `content_revision`을 건드리지 않는다.
+  - `RETRYABLE_SUMMARY_STATUSES`(failed/stale/pending) 상수를 두고, 실제 RPC의 `summary_status not in ('failed','stale','pending')` 조건과 1:1로 대응시켰다.
+  - 기존 F-007 통합 flow 테스트는 기본 fixture가 `not_due`라 곧바로 재시도하면 실패하므로, `runSummaryWorker()` → `createMessage`(stale) → 재시도 순서로 고쳤다.
+  - 회귀 테스트 7건 추가(`tests/mocks/mock-health-api.test.ts`): 404 / `not_due` 409 / `ready` 409 / 확정 409 / stale→pending과 revision 불변 / pending 중복 호출 / 오류 code·message.
 
 Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미수정).
 
@@ -266,7 +283,7 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 
 ### I5에서 남기는 메모
 
-- 스케줄러 자동 실행은 여전히 없다(vercel.json 부재). 진료 준비에 올라가는 요약은 수동 job 실행이나 확정 시점의 `user_final`에 의존한다.
+- 스케줄러 자동 실행은 **2026-09-27 기준 해결**(`vercel.json`의 `crons`에 `POST/GET /api/internal/daily-summary/run`이 `0 * * * *`로 등록됨, 커밋 `b80ff4a`). 이 메모를 읽을 당시에는 `vercel.json`이 없었다. 배포 전까지 요약은 수동 job 실행이나 확정 시점의 `user_final`에 의존한다.
 
 ---
 
@@ -350,6 +367,25 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 
 **보안 주의:** 이 과정에서 Vercel CLI 토큰을 파일로 읽어 API를 호출했다. `/tmp/vercel-token.txt`는 지우고, 셸 히스토리에 남지 않았는지 확인이 필요하다.
 
+### 2026-09-27 재확인 — 코드 없이 닫을 수 있는 항목 처리
+
+**레거시 테이블은 원격에 없다 → drop 마이그레이션이 불필요하다.**
+
+- `BACKEND_TASKS.md` B0 노트가 "남은 보안 advisor 경고는 레거시 `conversations`/`messages`/`daily_health_records` 정책 관련 항목"이라고 남겼지만, 2026-09-27 실측 결과 **세 테이블 모두 원격 `health` 프로젝트에 존재하지 않는다.**
+  - 확인 방법: `.env.local`의 service role 키로 `GET /rest/v1/{table}?select=*&limit=1` → 3종 모두 `PGRST205 Could not find the table 'public.X' in the schema cache`. anon(공개) 키로도 동일하게 404여서 익명 노출 가능성도 없다.
+  - 반면 앱이 쓰는 6개 테이블(`profiles`/`daily_records`/`record_messages`/`daily_summaries`/`record_suggestions`/`corrections`)은 모두 200으로 확인했다.
+  - `supabase/migrations/`에도 이 테이블을 만드는 마이그레이션이 없다. 따라서 **파괴적 drop 마이그레이션을 추가하지 않았다.** advisor 경고가 남는다면 다른 원인이므로, 배포 전 Supabase Dashboard → Advisors에서 실제 항목을 다시 확인해야 한다(CLI/Dashboard 접근 없이 advisor 목록은 조회 불가).
+
+**남은 항목은 사람이 처리해야 하는 3건이다(코드 작업 없음).**
+
+1. **I-714 문구 승인** — UI 반영은 끝났으므로 사람이 읽고 승인하면 된다. 백업 보존 기간 숫자는 운영 확인 전까지 넣지 않는다.
+2. **동의 화면** — 구현에 없다(코드 전체에 동의 화면/컴포넌트 0건). `profiles.consent_version`/`consented_at` 컬럼은 B0에서 "PRD 9.3 결정 전까지 보존"으로 남겨뒀다. 첫 로그인 동의 화면과 약관 페이지는 AGENTS §3(범위 확장 금지)과 PRD 9.3이 충돌하므로 **임의 구현하지 않고 결정만 남긴다.**
+3. **배포와 rate limit(I-716/I-717)** — Vercel 배포, 환경변수 7개, Firewall 규칙 적용, 429 검증.
+
+**참고(I-717 재시도 시):** 이번에 Vercel 문서 URL을 다시 조회했으나 관련 페이지가 404를 반환해 한도 필드명을 문서로 확정하지 못했다. API 대신 **대시보드 Security → Firewall → rate limit 규칙에서 경로별 requests/분 값을 직접 입력**하는 경로를 사용하면 된다(`docs/SECURITY.md` 10절의 표가 그대로 입력값이 된다).
+
+**이번 세션의 코드 변경:** `src/mocks/health-api.ts`의 `retrySummary` 정합 + 회귀 테스트 7건(I4 인수인계 마지막 항목). 그 외 미커밋 변경은 2026-09-27 F1 작업분이다.
+
 ### I7 진행 기록 (2026-09-26)
 
 - **I-701/I-702**: Jest 41 suites / 255 tests 통과, API integration 8 suites / 34 tests 통과.
@@ -378,9 +414,9 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
   - **PRD 9-4: 계정 삭제 후 인프라 백업 보존 기간 고지** — 현재 문구에 없음. 보존 기간은 실제 백업 정책 사실이므로 문서만으로는 정할 수 없고 운영 확인이 필요하다.
   - 문구 최종 승인 없이 I-716(배포 준비 완료)은 표시하지 않는다.
 
-#### I-714 검토용 초안 (미승인 · UI에 반영하지 않음)
+#### I-714 검토용 초안 (2026-09-26 작성 → 2026-09-27에 UI 반영됨)
 
-아래는 검토를 위해 준비한 초안이다. **승인 없이 `SettingsContent.tsx`에 반영하지 않았고**, 사람이 사실 확인을 해야 하는 값은 `확인 필요`로 표시했다.
+아래 초안은 검토용으로 준비했고, **같은 날 `SettingsContent.tsx`에 반영했다**(위 "남은 3건 처리 결과" 참조). `tests/components/privacy-notice.test.ts`가 반영 상태를 고정한다. 사람이 사실 확인을 해야 하는 값만 `확인 필요`로 남겼다.
 
 추가할 고지(1) — 외부 AI 처리자:
 
@@ -398,6 +434,7 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
   1. `NEXT_PUBLIC_USE_MOCK`는 Production에서 반드시 `false`여야 한다(생략하면 Mock으로 동작한다).
   2. 이 로컬 환경은 `OPENAI_BASE_URL`로 8787 포트의 로컬 AI 릴레이를 쓰고 있다. Vercel에는 이 값을 넣지 않으면 기본 `api.openai.com`으로 나간다.
   3. 스케줄러 cron이 없다. `vercel.json`에 `POST /api/internal/daily-summary/run` 호출을 등록해야 자동 요약이 돈다(I-305에서 수동 호출로만 확인).
+     - **→ 2026-09-27 정정:** 이미 등록되어 있다(커밋 `b80ff4a`). Vercel Cron은 GET으로 호출하고 `CRON_SECRET`이 설정돼 있으면 `Authorization: Bearer $CRON_SECRET`를 붙이므로, route의 GET/POST 분기(`src/app/api/internal/daily-summary/run/route.ts`)가 이 형식에 맞춰져 있다. 남은 건 배포 후 cron이 실제로 한 번 도는지 확인하는 것뿐이다.
 
 ### I7에서 고친 결함 2건
 

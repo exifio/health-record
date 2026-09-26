@@ -3,9 +3,9 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { RecordsShell } from "@/components/layout/RecordsShell";
-import { useHealthApi, getSystemLocalDate } from "@/features/api/api-adapter";
+import { useHealthApi } from "@/features/api/api-adapter";
+import { getSystemLocalDate } from "@/features/api/system-time";
 import { daysAgoLocalDate, LIST_RANGE_DAYS } from "@/components/layout/RecordsShell";
-import { useAuth } from "@/features/auth/auth-context";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { LoadingState } from "@/components/common/LoadingState";
 import { ErrorState } from "@/components/common/ErrorState";
@@ -14,8 +14,6 @@ import type { DailyRecordListItem } from "@/contracts";
 
 export function RecordsListContent() {
   const api = useHealthApi();
-  const { status } = useAuth();
-  const isAuthenticated = status === "authenticated";
   const [items, setItems] = useState<DailyRecordListItem[]>([]);
   const [unreviewedCount, setUnreviewedCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,12 +27,7 @@ export function RecordsListContent() {
     let ignore = false;
 
     async function fetchRecords() {
-      // I-106: 미인증/Demo 모드에서는 실제 사용자 API를 호출하지 않는다.
-      if (!isAuthenticated) {
-        if (!ignore) setIsLoading(false);
-        return;
-      }
-
+      // F-106 / I-106: 비로그인·둘러보기도 샘플(Mock) 목록을 조회한다(읽기 전용).
       try {
         const res = await api.getDailyRecords(from, to);
         if (!ignore) {
@@ -57,15 +50,11 @@ export function RecordsListContent() {
     return () => {
       ignore = true;
     };
-  }, [api, from, to, isAuthenticated]);
+  }, [api, from, to]);
 
   const handleRetry = () => {
     setIsLoading(true);
     setError(null);
-    if (!isAuthenticated) {
-      setIsLoading(false);
-      return;
-    }
     api.getDailyRecords(from, to)
       .then((res) => {
         setItems(res.items);

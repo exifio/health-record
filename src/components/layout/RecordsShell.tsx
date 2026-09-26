@@ -3,12 +3,26 @@
 import React, { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import type { RecentRecordItem } from "@/components/layout/Sidebar";
-import { useHealthApi, getSystemLocalDate } from "@/features/api/api-adapter";
-import { useAuth } from "@/features/auth/auth-context";
+import { useHealthApi } from "@/features/api/api-adapter";
+import { getSystemLocalDate } from "@/features/api/system-time";
+import type { DisplayStatus } from "@/components/common/StatusBadge";
 import type { DailyRecordListItem } from "@/contracts";
 
 const RECENT_RECORDS_LIMIT = 5;
 export const LIST_RANGE_DAYS = 90;
+
+/**
+ * F-603: 사이드바 '최근 기록'은 네비게이션 목록이라 사용자가 할 행동이 있는 상태만 배지로 보여 준다.
+ * (작성 중/AI 정리 대기/AI 정리 중은 기다리면 되는 수동 상태라 목록을 소음만 키운다.
+ *  같은 상태의 문구는 기록 목록·상세 화면에서 PRD 6절 표대로 그대로 보여 준다.)
+ */
+const PASSIVE_SUMMARY_STATUSES: DisplayStatus[] = ["draft", "not_due", "pending", "processing"];
+
+/** 목록 항목을 사이드바 배지 상태로 바꾼다. null이면 배지를 표시하지 않는다. */
+export function toSidebarBadgeStatus(item: DailyRecordListItem): DisplayStatus | null {
+  if (item.recordStatus === "confirmed") return "confirmed";
+  return PASSIVE_SUMMARY_STATUSES.includes(item.summaryStatus) ? null : item.summaryStatus;
+}
 
 /** 오늘(시스템 시간 기준)로부터 N일 전의 local_date를 계산한다. */
 export function daysAgoLocalDate(days: number, now: Date = new Date()): string {
@@ -29,7 +43,7 @@ export function toRecentRecordItems(items: DailyRecordListItem[]): RecentRecordI
   return items.slice(0, RECENT_RECORDS_LIMIT).map((item) => ({
     date: item.date,
     label: formatSidebarDateLabel(item.date),
-    status: item.recordStatus === "confirmed" ? "confirmed" : item.summaryStatus,
+    status: toSidebarBadgeStatus(item),
   }));
 }
 
@@ -39,8 +53,6 @@ export function toRecentRecordItems(items: DailyRecordListItem[]): RecentRecordI
  */
 export function RecordsShell({ children }: { children: React.ReactNode }) {
   const api = useHealthApi();
-  const { status } = useAuth();
-  const isAuthenticated = status === "authenticated";
 
   const [recentRecords, setRecentRecords] = useState<RecentRecordItem[]>([]);
   // 조회 범위는 최초 렌더에서 시스템 날짜 기준으로 한 번만 정한다(하루가 바뀌어도 목록은 유지).
@@ -50,9 +62,8 @@ export function RecordsShell({ children }: { children: React.ReactNode }) {
   }));
 
   useEffect(() => {
-    // I-106: 미인증/Demo 모드에서는 실제 사용자 API를 호출하지 않는다.
-    if (!isAuthenticated) return;
-
+    // I-106 / F-106: 비로그인·둘러보기도 샘플(Mock) 목록을 조회해 최근 기록을 보여 준다.
+    // 실제 사용자 API는 로그인 상태에서만 호출된다(AuthAwareHealthApiProvider).
     let ignore = false;
 
     api
@@ -68,7 +79,7 @@ export function RecordsShell({ children }: { children: React.ReactNode }) {
     return () => {
       ignore = true;
     };
-  }, [api, range.from, range.to, isAuthenticated]);
+  }, [api, range.from, range.to]);
 
   return <AppShell recentRecords={recentRecords}>{children}</AppShell>;
 }

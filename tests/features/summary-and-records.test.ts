@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DailySummaryCard } from "@/components/summary/DailySummaryCard";
-import { sampleYesterdayRecordResponse } from "@/mocks/fixtures";
+import { sampleYesterdayRecordResponse, sampleUnreviewedRecordResponse } from "@/mocks/fixtures";
 import type { DailyRecord } from "@/contracts";
 
 describe("F4 & F5: Daily Summary, Statuses, Confirm, Corrections", () => {
@@ -123,6 +123,32 @@ describe("F4 & F5: Daily Summary, Statuses, Confirm, Corrections", () => {
       expect(html).toContain("복용한 약");
       expect(html).toContain("타이레놀");
       expect(html).toContain('data-testid="edit-summary-btn"');
+    });
+
+    it("보완할 점이 있으면 '더 남겨두면 좋은 정보'를 보여 준다 (DESIGN 6절)", () => {
+      // 원문이 한 줄뿐이라 정리가 원문과 비슷해 보일 때도 무엇을 확인하면 되는지 알려 준다.
+      const html = renderToStaticMarkup(
+        React.createElement(DailySummaryCard, {
+          date: sampleUnreviewedRecordResponse.record.date,
+          record: sampleUnreviewedRecordResponse.record,
+        })
+      );
+
+      expect(html).toContain('data-testid="missing-information-section"');
+      expect(html).toContain("더 남겨두면 좋은 정보");
+      expect(html).toContain("증상이 얼마나 지속되었는지 기록할 수 있어요.");
+    });
+
+    it("보완할 점이 없으면 섹션 자체를 만들지 않는다", () => {
+      const html = renderToStaticMarkup(
+        React.createElement(DailySummaryCard, {
+          date: "2026-09-25",
+          record: baseRecord,
+        })
+      );
+
+      expect(html).not.toContain('data-testid="missing-information-section"');
+      expect(html).not.toContain("더 남겨두면 좋은 정보");
     });
 
     it("renders raw record disclosure button (F-608)", () => {

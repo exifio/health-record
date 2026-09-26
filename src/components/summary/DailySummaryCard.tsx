@@ -10,6 +10,11 @@ import { RecordTimeline } from "@/components/records/RecordTimeline";
 export interface DailySummaryCardProps {
   date: LocalDate;
   record: DailyRecord;
+  /**
+   * F-106: 비로그인·둘러보기 읽기 전용 모드.
+   * 요약/원문은 그대로 보여 주되 확정·수정·정정·삭제 같은 쓰기 동작은 노출하지 않는다.
+   */
+  readOnly?: boolean;
   onRetrySummary?: () => Promise<void>;
   onUpdateSummary?: (content: DailySummaryContent) => Promise<void>;
   onConfirmRecord?: () => Promise<void>;
@@ -40,6 +45,7 @@ function actionErrorMessage(error: unknown, fallback: string): string {
 export function DailySummaryCard({
   date,
   record,
+  readOnly = false,
   onRetrySummary,
   onUpdateSummary,
   onConfirmRecord,
@@ -164,15 +170,17 @@ export function DailySummaryCard({
           <StatusBadge status={isConfirmed ? "confirmed" : summaryStatus} />
         </div>
 
-        {/* F-507: Danger zone delete record trigger */}
-        <button
-          type="button"
-          className="btn-danger-outline"
-          onClick={() => setShowDeleteConfirm(true)}
-          data-testid="delete-day-btn"
-        >
-          하루 기록 전체 삭제
-        </button>
+        {/* F-507: Danger zone delete record trigger (읽기 전용에서는 숨김) */}
+        {!readOnly && (
+          <button
+            type="button"
+            className="btn-danger-outline"
+            onClick={() => setShowDeleteConfirm(true)}
+            data-testid="delete-day-btn"
+          >
+            하루 기록 전체 삭제
+          </button>
+        )}
       </div>
 
       {actionError && (
@@ -196,14 +204,14 @@ export function DailySummaryCard({
 
       {summaryStatus === "pending" && (
         <div className="summary-status-box summary-status--pending" data-testid="status-pending">
-          <p>정리 대기 중입니다. 잠시 후 새로고침해주세요.</p>
+          <p>AI 정리 대기 중입니다. 잠시 후 새로고침해주세요.</p>
         </div>
       )}
 
       {summaryStatus === "failed" && (
         <div className="summary-status-box summary-status--failed" data-testid="status-failed">
           <p>기록 정리를 완료하지 못했습니다. 작성한 기록은 정상적으로 저장되어 있습니다.</p>
-          {onRetrySummary && (
+          {!readOnly && onRetrySummary && (
             <button
               type="button"
               className="btn-retry-summary"
@@ -220,7 +228,7 @@ export function DailySummaryCard({
       {summaryStatus === "stale" && !isConfirmed && (
         <div className="summary-status-box summary-status--stale" data-testid="status-stale">
           <p>원문이 수정되어 최신 내용과 다릅니다. 다시 정리해주세요.</p>
-          {onRetrySummary && (
+          {!readOnly && onRetrySummary && (
             <button
               type="button"
               className="btn-retry-summary"
@@ -303,8 +311,23 @@ export function DailySummaryCard({
                 </div>
               )}
 
-              {/* F-503, F-504, F-408: Actions when unconfirmed */}
-              {!isConfirmed && (
+              {/* DESIGN 6절: 확인 단계에서 무엇을 봐야 하는지 보여 준다.
+                  원문이 충분하지 않아 정리가 원문과 비슷해 보일 때 특히 중요한 정보다. */}
+              {activeContent.missingInformation.length > 0 && (
+                <div className="summary-section" data-testid="missing-information-section">
+                  <h4 className="summary-section-title">더 남겨두면 좋은 정보</h4>
+                  <ul className="missing-information-list">
+                    {activeContent.missingInformation.map((item, idx) => (
+                      <li key={idx} className="missing-information-item" data-testid={`missing-information-${idx}`}>
+                        • {item.text}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* F-503, F-504, F-408: Actions when unconfirmed (읽기 전용에서는 숨김) */}
+              {!isConfirmed && !readOnly && (
                 <div className="summary-controls">
                   <button
                     type="button"
@@ -342,7 +365,7 @@ export function DailySummaryCard({
         </button>
         {showRaw && (
           <div className="raw-record-body" data-testid="raw-record-body">
-            <RecordTimeline messages={record.messages} isConfirmed={isConfirmed} />
+            <RecordTimeline messages={record.messages} isConfirmed={isConfirmed} canEdit={!readOnly} />
           </div>
         )}
       </div>
@@ -364,26 +387,28 @@ export function DailySummaryCard({
             <p className="corrections-empty">등록된 정정 기록이 없습니다.</p>
           )}
 
-          {/* F-506: Add correction composer */}
-          <form onSubmit={handleAddCorrection} className="correction-form" data-testid="correction-form">
-            <input
-              type="text"
-              placeholder="정정할 내용을 입력하세요"
-              value={correctionText}
-              onChange={(e) => setCorrectionText(e.target.value)}
-              className="correction-input"
-              disabled={isSubmitting}
-              data-testid="correction-input"
-            />
-            <button
-              type="submit"
-              className="btn-secondary"
-              disabled={!correctionText.trim() || isSubmitting}
-              data-testid="add-correction-btn"
-            >
-              정정 추가
-            </button>
-          </form>
+          {/* F-506: Add correction composer (읽기 전용에서는 숨김) */}
+          {!readOnly && (
+            <form onSubmit={handleAddCorrection} className="correction-form" data-testid="correction-form">
+              <input
+                type="text"
+                placeholder="정정할 내용을 입력하세요"
+                value={correctionText}
+                onChange={(e) => setCorrectionText(e.target.value)}
+                className="correction-input"
+                disabled={isSubmitting}
+                data-testid="correction-input"
+              />
+              <button
+                type="submit"
+                className="btn-secondary"
+                disabled={!correctionText.trim() || isSubmitting}
+                data-testid="add-correction-btn"
+              >
+                정정 추가
+              </button>
+            </form>
+          )}
         </div>
       )}
 

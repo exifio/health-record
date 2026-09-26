@@ -161,7 +161,7 @@ Google login
 - [ ] RLS enabled
 - [ ] service role client bundle 미포함
 - [ ] health text logging 없음
-- [ ] demo write 차단
+- [x] demo write 차단 (F-106: 비로그인·둘러보기는 읽기 전용 — `tests/features/auth-and-demo.test.ts`)
 - [ ] AI 실패 시 raw data 유지
 - [ ] confirmed mutation 차단
 - [ ] account delete 검증

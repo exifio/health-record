@@ -6,6 +6,8 @@ import type { DailyRecordMessage } from "@/contracts";
 export interface RecordMessageProps {
   message: DailyRecordMessage;
   isConfirmed?: boolean;
+  /** F-106: false면 원문 수정/삭제 UI를 숨긴다(비로그인·둘러보기 읽기 전용). */
+  canEdit?: boolean;
   onUpdate?: (messageId: string, newContent: string) => Promise<void>;
   onDelete?: (messageId: string) => Promise<void>;
 }
@@ -26,6 +28,7 @@ export function formatMessageTime(isoString: string): string {
 export function RecordMessage({
   message,
   isConfirmed = false,
+  canEdit = true,
   onUpdate,
   onDelete,
 }: RecordMessageProps) {
@@ -124,8 +127,8 @@ export function RecordMessage({
                 {formatMessageTime(message.createdAt)}
               </span>
 
-              {/* F-206 & F-207: Only show edit/delete if NOT confirmed */}
-              {!isConfirmed && (
+              {/* F-206 & F-207: Only show edit/delete if NOT confirmed and editable */}
+              {!isConfirmed && canEdit && (
                 <div className="message-actions">
                   <button
                     type="button"

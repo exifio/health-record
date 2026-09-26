@@ -124,6 +124,44 @@ export const sampleUnreviewedRecordResponse: DailyRecordResponse = DailyRecordRe
   },
 });
 
+/**
+ * F-105: 둘러보기 기록 목록(`sampleDailyRecordListResponse`)의 2026-09-22 항목과 짝을 이루는 상세 샘플.
+ * 목록에 보이는 날짜는 상세 화면에서도 같은 날짜의 샘플을 볼 수 있어야 한다.
+ * 요약/원문은 `sampleVisitPrepResponse`의 2026-09-22 진료 준비 항목과 같은 내용을 쓴다.
+ */
+export const sampleOlderRecordResponse: DailyRecordResponse = DailyRecordResponseSchema.parse({
+  record: {
+    date: "2026-09-22",
+    recordStatus: "confirmed",
+    summaryStatus: "ready",
+    contentRevision: 1,
+    messages: [
+      {
+        id: "00000000-0000-4000-8000-000000000005",
+        content: "아침에 일어나니 머리가 조금 아팠어요.",
+        createdAt: "2026-09-22T00:30:00Z",
+        updatedAt: "2026-09-22T00:30:00Z",
+      },
+    ],
+    summary: {
+      sourceRevision: 1,
+      aiDraft: {
+        timeline: [
+          {
+            text: "아침 기상 시 가벼운 두통",
+            sourceMessageIds: ["00000000-0000-4000-8000-000000000005"],
+          },
+        ],
+        medications: [],
+        missingInformation: [],
+      },
+      userFinal: null,
+      generatedAt: "2026-09-22T23:00:00Z",
+    },
+    corrections: [],
+  },
+});
+
 // Backward-compatible alias for existing tests
 export const sampleDailyRecordResponse = sampleTodayRecordResponse;
 

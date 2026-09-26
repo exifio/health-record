@@ -26,12 +26,7 @@ export function RecordDateContent({ date }: { date: LocalDate }) {
     let ignore = false;
 
     async function fetchRecord() {
-      // I-106: 미인증/Demo 모드에서는 실제 사용자 API를 호출하지 않는다.
-      if (!isAuthenticated) {
-        if (!ignore) setIsLoading(false);
-        return;
-      }
-
+      // F-106 / I-106: 비로그인·둘러보기는 샘플(Mock) 기록을 읽기 전용으로 보여 준다.
       try {
         const res = await api.getDailyRecord(date);
         if (!ignore) {
@@ -57,7 +52,7 @@ export function RecordDateContent({ date }: { date: LocalDate }) {
     return () => {
       ignore = true;
     };
-  }, [api, date, isAuthenticated]);
+  }, [api, date]);
 
   const reload = () => {
     setIsLoading(true);
@@ -153,6 +148,7 @@ export function RecordDateContent({ date }: { date: LocalDate }) {
           <DailySummaryCard
             date={date}
             record={record}
+            readOnly={!isAuthenticated}
             onRetrySummary={handleRetrySummary}
             onUpdateSummary={handleUpdateSummary}
             onConfirmRecord={handleConfirmRecord}

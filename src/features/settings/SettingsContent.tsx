@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AppShell } from "@/components/layout/AppShell";
+import { RecordsShell } from "@/components/layout/RecordsShell";
 import { useHealthApi } from "@/features/api/api-adapter";
 import { useAuth } from "@/features/auth/auth-context";
 import { useTheme, type Theme } from "@/features/theme/theme-context";
@@ -70,7 +70,9 @@ export function SettingsContent() {
   };
 
   return (
-    <AppShell>
+    // RecordsShell은 AppShell에 최근 기록까지 넣어 준다. AppShell을 직접 쓰면
+    // 설정에서만 사이드바가 "아직 기록이 없습니다"로 보여 다른 화면과 어긋난다.
+    <RecordsShell>
       <div className="settings-page" data-testid="settings-page">
         <header className="settings-header">
           <h2 className="settings-heading">설정</h2>
@@ -313,6 +315,6 @@ export function SettingsContent() {
           </div>
         )}
       </div>
-    </AppShell>
+    </RecordsShell>
   );
 }

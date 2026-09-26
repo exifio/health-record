@@ -24,7 +24,8 @@ export function HomeContent() {
 
   return (
     <RecordsShell>
-      {status === "demo" && <DemoModeBanner onLoginClick={openLoginModal} />}
+      {/* F-105: 비로그인·둘러보기는 샘플(Mock) 데이터를 보여 주므로 샘플임을 항상 알린다. */}
+      {status !== "authenticated" && <DemoModeBanner onLoginClick={openLoginModal} />}
       {status === "authenticated" && isReady && needsOnboarding && (
         <OnboardingNotice onDismiss={completeOnboarding} />
       )}

@@ -2,12 +2,19 @@
 
 import React, { useEffect } from "react";
 import Link from "next/link";
-import { StatusBadge, type DisplayStatus } from "@/components/common/StatusBadge";
+import { usePathname } from "next/navigation";
+import { StatusBadge, statusHint, type DisplayStatus } from "@/components/common/StatusBadge";
 
 export interface RecentRecordItem {
   date: string;
   label: string;
-  status: DisplayStatus;
+  /** null이면 배지를 표시하지 않는다(사용자가 할 행동이 없는 수동 상태). */
+  status: DisplayStatus | null;
+}
+
+/** 사이드바에서 현재 보고 있는 기록인지 판정한다(활성 표시 + aria-current). */
+export function isActiveRecordPath(pathname: string | null, date: string): boolean {
+  return pathname === `/records/${date}`;
 }
 
 export interface SidebarProps {
@@ -107,6 +114,8 @@ export function Sidebar({
   // 데이터는 RecordsShell이 주입한다. prop을 주지 않으면 빈 목록으로 렌더링한다(F-601).
   recentRecords = [],
 }: SidebarProps) {
+  const pathname = usePathname();
+
   // Close mobile drawer on Escape key
   useEffect(() => {
     if (!isMobileOpen) return;
@@ -174,18 +183,24 @@ export function Sidebar({
           <div className="sidebar-section-title">최근 기록</div>
           {recentRecords.length > 0 ? (
             <ul className="sidebar-menu sidebar-records-list">
-              {recentRecords.map((item) => (
-                <li key={item.date}>
-                  <Link
-                    href={"/records/" + item.date}
-                    className="sidebar-record-item"
-                    onClick={onCloseMobile}
-                  >
-                    <span className="sidebar-record-date">{item.label}</span>
-                    <StatusBadge status={item.status} />
-                  </Link>
-                </li>
-              ))}
+              {recentRecords.map((item) => {
+                const isActive = isActiveRecordPath(pathname, item.date);
+
+                return (
+                  <li key={item.date}>
+                    <Link
+                      href={"/records/" + item.date}
+                      className={"sidebar-record-item" + (isActive ? " is-active" : "")}
+                      aria-current={isActive ? "page" : undefined}
+                      title={item.status ? statusHint(item.status) : undefined}
+                      onClick={onCloseMobile}
+                    >
+                      <span className="sidebar-record-date">{item.label}</span>
+                      {item.status && <StatusBadge status={item.status} />}
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className="sidebar-records-empty" data-testid="sidebar-records-empty">

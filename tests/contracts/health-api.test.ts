@@ -19,6 +19,9 @@ const recordResponse = {
   },
 };
 
+/** fixture에 기록이 없는 날짜. Mock이 기록을 만들어 내지 않는지 확인할 때 쓴다. */
+const MISSING_DATE = "2026-09-20";
+
 describe("health API adapters", () => {
   it("validates HTTP responses against the shared contract", async () => {
     const calls: string[] = [];
@@ -58,7 +61,7 @@ describe("health API adapters", () => {
   it("does not invent records for dates without a fixture", async () => {
     // I-201: Mock은 실제 API와 같은 contract error code/status로 던져야 한다.
     // (메시지 문자열이 다르면 화면 분기가 깨지므로 문자열로 판별하지 않는다.)
-    await expect(createMockHealthApi().getDailyRecord("2026-09-24")).rejects.toMatchObject({
+    await expect(createMockHealthApi().getDailyRecord(MISSING_DATE)).rejects.toMatchObject({
       code: API_ERROR_CODES.recordNotFound,
       status: 404,
     });
@@ -75,7 +78,7 @@ describe("health API adapters", () => {
       .getDailyRecord("2026-09-24")
       .catch((error: unknown) => error);
     const mockError = await createMockHealthApi()
-      .getDailyRecord("2026-09-24")
+      .getDailyRecord(MISSING_DATE)
       .catch((error: unknown) => error);
 
     expect(realError).toBeInstanceOf(HealthApiError);
@@ -113,7 +116,7 @@ describe("health API adapters", () => {
       );
 
     const fromReal = await createHealthApi(notFound).getDailyRecord("2026-09-24").catch((e: unknown) => e);
-    const fromMock = await createMockHealthApi().getDailyRecord("2026-09-24").catch((e: unknown) => e);
+    const fromMock = await createMockHealthApi().getDailyRecord(MISSING_DATE).catch((e: unknown) => e);
     const fromFailure = await createHealthApi(serverError).getDailyRecord("2026-09-24").catch((e: unknown) => e);
     const networkDown = await createHealthApi(async () => {
       throw new TypeError("Failed to fetch");

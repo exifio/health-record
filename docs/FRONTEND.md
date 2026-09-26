@@ -143,6 +143,18 @@ Mock response shape는 실제 Contract와 동일해야 합니다.
 
 ## 9. 상태별 UI 규칙
 
+### 상태 문구 (F-603)
+
+- 배지 문구는 PRD 6절 `UI 표시 상태` 표를 그대로 쓴다.
+  - `draft + not_due` → `작성 중`, `pending` → `AI 정리 대기`, `processing` → `AI 정리 중`,
+    `ready` → `확인 필요`, `stale` → `정리 필요`, `failed` → `정리 실패`, `confirmed` → `확정`
+- 문구만으로 이유를 알 수 없으므로 배지에 이유/다음 행동을 함께 둔다(`title` + 스크린리더 전용 텍스트).
+  예: `확인 필요` → "AI 정리 초안이 준비되었습니다. 내용을 확인하고 확정해 주세요."
+- `missingInformation`은 카드에서 `더 남겨두면 좋은 정보` 섹션으로 보여 준다(DESIGN 6절).
+  원문이 한 줄뿐이라 정리가 원문과 비슷해 보일 때도 **무엇을 확인하면 되는지**가 드러나야 한다.
+- 사이드바 '최근 기록'은 네비게이션 목록이라 행동이 필요 없는 수동 상태(`작성 중`/`AI 정리 대기`/`AI 정리 중`)는 배지를 표시하지 않는다.
+- 현재 보고 있는 날짜 항목은 `aria-current="page"` + 강조 스타일로 표시한다.
+
 ### confirmed
 - 원문 edit/delete 메뉴 숨김
 - summary editor 숨김
@@ -150,7 +162,7 @@ Mock response shape는 실제 Contract와 동일해야 합니다.
 
 ### summary processing/pending/stale
 - confirm 비활성화
-- `정리 중` 상태 표시
+- PRD 6절 문구 그대로 상태 표시(`AI 정리 대기` / `AI 정리 중` / `정리 필요`)
 
 ### summary failed
 - 원문 정상 저장 문구
@@ -164,6 +176,30 @@ Demo Mode는 실제 사용자 API를 호출하지 않습니다.
 - 입력 제출 차단
 - 실제 건강 정보가 브라우저 로그나 서버로 전송되지 않도록 함
 - 사용자가 기능을 누르면 로그인 모달
+
+### 로그인 상태에 따른 API 선택 (F-106)
+
+- `AuthAwareHealthApiProvider`가 `AuthProvider`의 상태를 읽어 화면이 쓸 API를 고릅니다.
+  - `authenticated`: 실제 API (`getDefaultHealthApi()`, `NEXT_PUBLIC_USE_MOCK=false` 기준)
+  - `unauthenticated` / `demo`: 정적 샘플(Mock) API만 사용
+- 그래서 로그인하지 않아도 기록 목록·날짜 상세·요약·진료 준비 샘플을 볼 수 있고,
+  실제 사용자 API는 호출되지 않습니다.
+- 샘플 날짜는 `fixtures.ts`의 4건(2026-09-22 ~ 2026-09-25)으로 고정합니다.
+  실행 시점 날짜에 같은 원문을 복제하면 샘플이 두 곳에서 중복돼 보이므로 하지 않습니다.
+- 기록 목록 fixture에 보이는 날짜는 상세 화면에서도 같은 샘플을 보여 줍니다.
+
+> **결정(2026-09-27)**: PRD 5절의 "샘플 **오늘** 기록"은 제공하지 않는다(사용자 지시:
+> 9/25와 같은 원문이 오늘 날짜에 복제돼 중복으로 보였기 때문). 비로그인 `/today`는 빈 상태로
+> 두고 둘러보기 배너와 입력창 안내로 로그인을 유도한다. PRD 5절 문구 조정은 제품 정책 담당이
+> 볼 항목이며, 선택지와 근거는 `docs/tasks/FRONTEND_TASKS.md`의 "추가 결정 필요 → 결정 완료"에 남겨 두었다.
+
+### 읽기 전용 규칙 (F-106)
+
+비로그인·둘러보기 화면은 조회만 허용합니다.
+
+- `RecordTimeline` / `RecordMessage`: `canEdit={false}` → 원문 수정/삭제 UI 숨김
+- `DailySummaryCard`: `readOnly` → 확정·요약 수정·정정 추가·하루 삭제 UI 숨김
+- 기록 입력창은 그대로 노출하고 제출·포커스 시 로그인 모달을 띄웁니다(`RecordComposer`)
 
 ## 11. 화면 테마 / 다크모드
 

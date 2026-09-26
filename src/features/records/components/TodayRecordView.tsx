@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { useHealthApi, getSystemLocalDate, getSystemTimeZone } from "@/features/api/api-adapter";
+import { useHealthApi } from "@/features/api/api-adapter";
+import { getSystemLocalDate, getSystemTimeZone } from "@/features/api/system-time";
 import { API_ERROR_CODES, isApiError } from "@/features/records/api/health-api";
 import { useAuth } from "@/features/auth/auth-context";
 import { RecordTimeline } from "@/components/records/RecordTimeline";
@@ -42,27 +43,20 @@ export function TodayRecordView() {
 
   // F-305 & F-306: Background refresh for suggestions without blocking user
   const refreshSuggestions = useCallback(async () => {
-    // I-106: 미인증/Demo 모드에서는 실제 사용자 API를 호출하지 않는다.
-    if (!isAuthenticated) return;
-
     try {
       const res = await api.getSuggestions(todayDate);
       setSuggestions(res.suggestions || []);
     } catch {
       setSuggestions([]);
     }
-  }, [api, todayDate, isAuthenticated]);
+  }, [api, todayDate]);
 
   useEffect(() => {
     let ignore = false;
 
     async function loadInitialData() {
-      // I-106: 미인증/Demo 모드에서는 실제 사용자 API를 호출하지 않는다.
-      if (!isAuthenticated) {
-        setIsLoading(false);
-        return;
-      }
-
+      // F-106 / I-106: 비로그인·둘러보기는 샘플(Mock) 오늘 기록을 그대로 보여 준다.
+      // 실제 사용자 API는 로그인 상태에서만 호출된다(AuthAwareHealthApiProvider).
       try {
         const [recordRes, suggestionsRes] = await Promise.allSettled([
           api.getDailyRecord(todayDate),
@@ -101,15 +95,11 @@ export function TodayRecordView() {
     return () => {
       ignore = true;
     };
-  }, [api, todayDate, isAuthenticated]);
+  }, [api, todayDate]);
 
   const handleRetry = () => {
     setIsLoading(true);
     setError(null);
-    if (!isAuthenticated) {
-      setIsLoading(false);
-      return;
-    }
     Promise.allSettled([
       api.getDailyRecord(todayDate),
       api.getSuggestions(todayDate),
@@ -232,9 +222,11 @@ export function TodayRecordView() {
       </header>
 
       {/* F-202 & F-203 & F-205: Timeline and Messages */}
+      {/* F-106: 비로그인·둘러보기는 읽기 전용이므로 원문 수정/삭제 UI를 노출하지 않는다. */}
       <RecordTimeline
         messages={messages}
         isConfirmed={isConfirmed}
+        canEdit={isAuthenticated}
         onUpdateMessage={handleUpdateMessage}
         onDeleteMessage={handleDeleteMessage}
       />

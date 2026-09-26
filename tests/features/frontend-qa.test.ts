@@ -181,7 +181,7 @@ describe("F8: Frontend QA & Integration Checklist (F-801 ~ F-810)", () => {
       { status: "confirmed", label: "확정" },
       { status: "ready", label: "확인 필요" },
       { status: "failed", label: "정리 실패" },
-      { status: "stale", label: "수정됨" },
+      { status: "stale", label: "정리 필요" },
     ] as const;
 
     for (const { status, label } of statuses) {

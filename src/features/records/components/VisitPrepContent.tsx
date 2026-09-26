@@ -3,8 +3,8 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { RecordsShell, daysAgoLocalDate, LIST_RANGE_DAYS as VISIT_PREP_RANGE_DAYS } from "@/components/layout/RecordsShell";
-import { useHealthApi, getSystemLocalDate } from "@/features/api/api-adapter";
-import { useAuth } from "@/features/auth/auth-context";
+import { useHealthApi } from "@/features/api/api-adapter";
+import { getSystemLocalDate } from "@/features/api/system-time";
 import { LoadingState } from "@/components/common/LoadingState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -12,8 +12,6 @@ import type { VisitPrepResponse } from "@/contracts";
 
 export function VisitPrepContent() {
   const api = useHealthApi();
-  const { status } = useAuth();
-  const isAuthenticated = status === "authenticated";
   const today = getSystemLocalDate();
 
   // F-605: Date range selection
@@ -30,11 +28,6 @@ export function VisitPrepContent() {
 
   const handleFetchPrep = async (e: React.FormEvent) => {
     e.preventDefault();
-    // I-106: 미인증/Demo 모드에서는 실제 사용자 API를 호출하지 않는다.
-    if (!isAuthenticated) {
-      setError("로그인이 필요합니다.");
-      return;
-    }
 
     try {
       setIsLoading(true);

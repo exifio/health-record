@@ -7,6 +7,8 @@ import { RecordMessage } from "@/components/records/RecordMessage";
 export interface RecordTimelineProps {
   messages: DailyRecordMessage[];
   isConfirmed?: boolean;
+  /** F-106: false면 각 원문의 수정/삭제 UI를 숨긴다(비로그인·둘러보기 읽기 전용). */
+  canEdit?: boolean;
   onUpdateMessage?: (messageId: string, content: string) => Promise<void>;
   onDeleteMessage?: (messageId: string) => Promise<void>;
   className?: string;
@@ -15,6 +17,7 @@ export interface RecordTimelineProps {
 export function RecordTimeline({
   messages,
   isConfirmed = false,
+  canEdit = true,
   onUpdateMessage,
   onDeleteMessage,
   className = "",
@@ -36,6 +39,7 @@ export function RecordTimeline({
             <RecordMessage
               message={msg}
               isConfirmed={isConfirmed}
+              canEdit={canEdit}
               onUpdate={onUpdateMessage}
               onDelete={onDeleteMessage}
             />

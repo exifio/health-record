@@ -13,7 +13,7 @@ import { formatKoreanDate } from "@/features/records/components/TodayRecordView"
 import {
   getSystemLocalDate,
   getSystemTimeZone,
-} from "@/features/api/api-adapter";
+} from "@/features/api/system-time";
 import { createMockHealthApi } from "@/mocks/health-api";
 import type { DailyRecordMessage } from "@/contracts";
 

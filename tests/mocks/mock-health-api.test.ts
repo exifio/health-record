@@ -43,7 +43,13 @@ describe("createMockHealthApi (F-007)", () => {
     const suggestions = await api.getSuggestions("2026-09-25");
     expect(SuggestionsResponseSchema.parse(suggestions)).toBeDefined();
 
-    // 7. retrySummary
+    // 7. retrySummary — 실제 서버는 failed/stale/pending만 pending으로 되돌린다(API.md 9절).
+    // 기본 fixture는 not_due라 즉시 재시도할 수 없다. 정리 완료 → 원문 변경으로 stale을 만든 뒤 재시도한다.
+    await api.runSummaryWorker();
+    await api.createMessage("2026-09-25", {
+      content: "저녁에 다시 속쓰림이 조금",
+      systemTimeZone: "Asia/Seoul",
+    });
     const retry = await api.retrySummary("2026-09-25");
     expect(retry.summaryStatus).toBe("pending");
 
@@ -96,6 +102,44 @@ describe("createMockHealthApi (F-007)", () => {
     // 14. deleteHealthData & deleteAccount
     await api.deleteHealthData();
     await api.deleteAccount();
+  });
+});
+
+describe("createMockHealthApi — 둘러보기 Demo 샘플 (F-104 / F-105)", () => {
+  /** 둘러보기가 제공하는 샘플 날짜(fixtures.ts와 같은 순서). */
+  const FIXTURE_DATES = ["2026-09-25", "2026-09-24", "2026-09-23", "2026-09-22"];
+
+  it("목록은 fixture 샘플만 내려준다", async () => {
+    const api = createMockHealthApi();
+
+    const list = await api.getDailyRecords("2000-01-01", "2030-12-31");
+
+    // 실행 시점 날짜에 샘플 원문을 복제하면 같은 기록이 두 날짜에 중복돼 보인다.
+    expect(list.items.map((item) => item.date)).toEqual(FIXTURE_DATES);
+  });
+
+  it("날짜마다 서로 다른 샘플 원문을 제공한다", async () => {
+    const api = createMockHealthApi();
+    const contents: string[] = [];
+
+    for (const date of FIXTURE_DATES) {
+      const res = await api.getDailyRecord(date);
+      contents.push(res.record.messages.map((message) => message.content).join("\n"));
+    }
+
+    expect(new Set(contents).size).toBe(contents.length);
+  });
+
+  it("기록 목록에 보이는 샘플 날짜는 상세 조회도 가능하다", async () => {
+    const api = createMockHealthApi();
+    const list = await api.getDailyRecords("2000-01-01", "2030-12-31");
+
+    // 목록과 상세가 서로 다른 샘플을 보여 주면 안 된다(F-105).
+    for (const item of list.items) {
+      const detail = await api.getDailyRecord(item.date);
+      expect(detail.record.date).toBe(item.date);
+      expect(detail.record.messages.length).toBeGreaterThan(0);
+    }
   });
 });
 
@@ -156,5 +200,75 @@ describe("createMockHealthApi — business rule parity with real backend (I-001)
     const after = await api.getDailyRecord("2026-09-25");
     expect(after.record.contentRevision).toBeGreaterThan(before.record.contentRevision);
     expect(after.record.summaryStatus).toBe("stale");
+  });
+});
+
+describe("createMockHealthApi — 요약 재시도 규칙 정합 (API.md 9절 / I4)", () => {
+  const notRetryable = { code: "SUMMARY_NOT_RETRYABLE", status: 409 };
+
+  it("기록이 없으면 404 RECORD_NOT_FOUND", async () => {
+    const api = createMockHealthApi();
+
+    await expect(api.retrySummary("2026-09-01")).rejects.toMatchObject({
+      code: "RECORD_NOT_FOUND",
+      status: 404,
+    });
+  });
+
+  it("아직 하루가 끝나지 않은(not_due) 기록은 재시도할 수 없다", async () => {
+    const api = createMockHealthApi();
+
+    // fixture의 오늘 기록은 draft + not_due다.
+    await expect(api.retrySummary("2026-09-25")).rejects.toMatchObject(notRetryable);
+  });
+
+  it("정리 완료된(ready) 기록은 재시도할 수 없다", async () => {
+    const api = createMockHealthApi();
+
+    // fixture의 미확인 기록은 draft + ready다.
+    await expect(api.retrySummary("2026-09-23")).rejects.toMatchObject(notRetryable);
+  });
+
+  it("확정된 기록은 재시도할 수 없다", async () => {
+    const api = createMockHealthApi();
+
+    // fixture의 어제 기록은 confirmed다.
+    await expect(api.retrySummary("2026-09-24")).rejects.toMatchObject(notRetryable);
+  });
+
+  it("stale 기록은 pending으로 되돌리고 원문 revision은 건드리지 않는다", async () => {
+    const api = createMockHealthApi();
+    await api.runSummaryWorker();
+    await api.createMessage("2026-09-25", { content: "점심 후 다시 속쓰림", systemTimeZone: "Asia/Seoul" });
+
+    const before = await api.getDailyRecord("2026-09-25");
+    expect(before.record.summaryStatus).toBe("stale");
+
+    const retry = await api.retrySummary("2026-09-25");
+    expect(retry.summaryStatus).toBe("pending");
+
+    const after = await api.getDailyRecord("2026-09-25");
+    expect(after.record.summaryStatus).toBe("pending");
+    // 재시도는 AI를 다시 호출하지 않으므로 content_revision이 그대로여야 한다.
+    expect(after.record.contentRevision).toBe(before.record.contentRevision);
+  });
+
+  it("pending에서 중복 호출해도 상태를 바꾸지 않고 같은 202를 돌려준다", async () => {
+    const api = createMockHealthApi();
+    await api.runSummaryWorker();
+    await api.createMessage("2026-09-25", { content: "저녁에 다시 멍함", systemTimeZone: "Asia/Seoul" });
+    await api.retrySummary("2026-09-25");
+
+    await expect(api.retrySummary("2026-09-25")).resolves.toEqual({ summaryStatus: "pending" });
+  });
+
+  it("재시도 실패는 화면이 구분할 수 있는 code로 던진다", async () => {
+    const api = createMockHealthApi();
+
+    await expect(api.retrySummary("2026-09-25")).rejects.toMatchObject({
+      code: "SUMMARY_NOT_RETRYABLE",
+      status: 409,
+      message: "지금은 다시 정리할 수 없습니다.",
+    });
   });
 });
