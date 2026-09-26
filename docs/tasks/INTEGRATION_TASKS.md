@@ -31,14 +31,14 @@
 
 **I-002 — 완료.** F-001~F-810이 전부 `[x]`다. Mock API 기준 테스트(`tests/features`, `tests/mocks`, `tests/components`)가 통과한다. 백엔드 구현을 기다리지 않고 화면을 완성한 상태다.
 
-**I-003 — 완료 (B-613 이월).** B-001~B-612와 B-614~B-711이 `[x]`다. B-613(Vercel Firewall rate limit)만 `[!]`로 남아 있고 원인은 Vercel 프로젝트 미연결이다. API/DB 구현 완료에는 영향이 없으므로 I3 진행을 막지 않지만, **배포(I-715/I-716) 전 반드시 마감**해야 한다.
+**I-003 — 완료 (B-613 이월).** B-001~B-612와 B-614~B-711이 `[x]`다. B-613(Vercel Firewall rate limit)만 `[!]`로 남아 있고, Integration이 확인한 바 Pro 플랜은 충족되어 있어 남은 이유는 health-record 프로젝트 미생성(배포 승인 대기)뿐이다. API/DB 구현 완료에는 영향이 없으므로 I3 진행을 막지 않지만, **배포(I-715/I-716) 전 반드시 마감**해야 한다.
 
 **I-004 — 완료. (결정: 선택지 A)**
 
 - 저장소에는 `main` 단일 브랜치만 있고 FE/BE 전용 브랜치·worktree도, 원격 remote도 없다. → I-101/I-102/I-103(Merge)은 "해당 없음"으로 처리한다.
 - FE/BE 작업 전체가 working tree에만 커밋되지 않은 상태로 남아 있어 **통합 스냅샷 커밋**으로 기록했다. 커밋 `a01a75f` (132 files, +12398/-202).
 - 커밋 전 정리: `.playwright-cli/`(브라우저 콘솔 로그)을 `.gitignore`에 추가해 제외했다. `.env.local`은 기존 규칙으로 제외되어 있고, 커밋 대상 전수 검사에서 Secret 값은 발견되지 않았다.
-- 남은 사항: `scripts/update_b1_tasks.py`는 Backend 문서 편집용 1회성 스크립트라 커밋에서 제외했다. 정리 여부는 `[!]` 로 남긴다.
+- `scripts/update_b1_tasks.py`는 Backend 문서 편집용 1회성 스크립트라 커밋에서 제외했으나, 같은 커밋에서 삭제해 저장소를 깨끗하게 정리했다.
 
 **I-005 — 완료. 아래 두 차단 항목을 해결했다.**
 
@@ -50,7 +50,7 @@
 
 ### I0에서 발견한 신규 차단 항목 → 해결 (선택지 A 결정)
 
-- [!] → **해결. 결정: (A) RPC 호출을 사용자 세션 클라이언트로 전환**
+- [x] **해결. 결정: (A) RPC 호출을 사용자 세션 클라이언트로 전환**
   - **원인:** 마이그레이션의 사용자 데이터 RPC 7개는 `auth.uid()`로 권한을 검증하는데, 서버가 `createAdminClient()`(service role key)로 호출하고 있었다. service role JWT에는 `sub`가 없어 `auth.uid()`가 NULL이므로 메시지 추가/수정/삭제, 요약 수정, 확정, 정정 추가, 하루 삭제, 전체 건강 기록 삭제, 계정 삭제가 전부 403 `FORBIDDEN`으로 실패했다.
   - **실측 근거:** 원격 프로젝트에 service role key로 `POST /rest/v1/rpc/create_record_message` 호출 → `HTTP 403 {"code":"42501","message":"FORBIDDEN"}`. 실패 시 트랜잭션 롤백으로 데이터 미생성.
   - **코드 변경:** `confirm`, `summary`(PATCH), `corrections`, `summary/retry` route가 `createServerClient()`(세션 클라이언트)를 사용한다. service role은 스케줄러(`api/internal/daily-summary/run`)와 Auth Admin API를 쓰는 `api/account`에만 남았다.
