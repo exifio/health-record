@@ -47,6 +47,9 @@ describe("createMockHealthApi (F-007)", () => {
     const retry = await api.retrySummary("2026-09-25");
     expect(retry.summaryStatus).toBe("pending");
 
+    // 실제 서버와 동일하게, 요약 수정은 초안이 준비된(ready) 상태에서만 가능하다.
+    await api.runSummaryWorker();
+
     // 8. updateSummary
     const summaryResult = await api.updateSummary("2026-09-25", {
       timeline: [{ text: "점심 후 속쓰림", sourceMessageIds: ["00000000-0000-4000-8000-000000000001"] }],
@@ -99,8 +102,14 @@ describe("createMockHealthApi (F-007)", () => {
 describe("createMockHealthApi — business rule parity with real backend (I-001)", () => {
   const staleMessage = { content: "오후에 다시 속이 불편", systemTimeZone: "Asia/Seoul" };
 
+  /** 실제 서버의 스케줄러가 초안을 만드는 단계를 흉내낸다(B3). */
+  async function readySummary(api: ReturnType<typeof createMockHealthApi>) {
+    await api.runSummaryWorker();
+  }
+
   it("blocks confirmation when the summary is stale after a source change (SUMMARY_STALE)", async () => {
     const api = createMockHealthApi();
+    await readySummary(api);
 
     // 원문 추가 → content_revision 증가, 요약을 stale로 표시 (실제 서버와 동일)
     await api.createMessage("2026-09-25", staleMessage);
@@ -115,6 +124,7 @@ describe("createMockHealthApi — business rule parity with real backend (I-001)
 
   it("blocks editing a stale summary (SUMMARY_STALE)", async () => {
     const api = createMockHealthApi();
+    await readySummary(api);
     await api.createMessage("2026-09-25", staleMessage);
 
     await expect(
@@ -137,6 +147,8 @@ describe("createMockHealthApi — business rule parity with real backend (I-001)
 
   it("marks summaryStatus stale when the source changed after the summary was generated", async () => {
     const api = createMockHealthApi();
+    await readySummary(api);
+
     const before = await api.getDailyRecord("2026-09-25");
     expect(before.record.summaryStatus).toBe("ready");
 
