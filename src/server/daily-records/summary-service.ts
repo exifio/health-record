@@ -79,6 +79,13 @@ export async function retryDailySummary(
   return RetrySummaryResponseSchema.parse({ summaryStatus: "pending" });
 }
 
+// returns text RPC는 PostgREST가 스칼라 문자열을 돌려준다. table 반환 함수처럼 배열로 오지 않는다.
+function readScalarResult(value: unknown): string | null {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value) && typeof value[0] === "string") return value[0];
+  return null;
+}
+
 export async function runDailySummaryJob(supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from("daily_records")
@@ -140,7 +147,7 @@ export async function runDailySummaryJob(supabase: SupabaseClient) {
       });
 
       if (completionError) throw new Error("Unable to save summary");
-      const result = Array.isArray(completionRows) ? completionRows[0]?.result : null;
+      const result = readScalarResult(completionRows);
       if (result === "ready") completedCount += 1;
       else failedCount += 1;
     } catch {

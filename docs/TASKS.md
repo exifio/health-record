@@ -101,8 +101,12 @@
 # 3. 추가 결정 필요
 
 - [!] 과거에 기록이 전혀 없는 날짜를 사용자가 새로 작성할 수 있게 할지
+  - 현재 상태: `docs/API.md` 5절의 MVP 기본안은 "기존 draft record가 있을 때만 추가 허용"이지만, 구현(`create_record_message`)은 record가 없으면 새로 만듭니다. 원격 DB에서도 미기록 날짜에 대한 작성으로 record가 생성되는 것을 확인했습니다. **구현과 Contract 기본안이 서로 다릅니다.**
 - [!] 공개 전 개인정보 / AI 처리 안내 최종 문구
 - [!] 운영 오류 모니터링 / Analytics 도구를 사용할 경우 건강 원문 제거 설정
-- [!] DB 함수의 `auth.uid()` 검증과 서버의 service role 호출 경로 불일치 (Integration I0에서 실측). 메시지 작성/수정/삭제, 요약 수정, 확정, 정정, 삭제 API가 전부 403으로 실패한다. 상세와 선택지는 `docs/tasks/INTEGRATION_TASKS.md` I0 진행 기록 참조.
+  - 현재 상태: MVP에서 외부 모니터링/Analytics 도구를 도입하지 않고 있습니다(B6 확인). 도입 시 건강 원문·message id·요약 본문을 전송하지 않는 것을 기본 조건으로 둡니다.
+- [!] B-613 Vercel rate limit — Pro 플랜은 확인됐고, 프로젝트 생성/배포가 남았습니다. 배포는 제품 공개 결정이므로 승인이 필요합니다. (`docs/tasks/BACKEND_TASKS.md` 참고)
+- [x] ~~DB 함수의 `auth.uid()` 검증과 서버의 service role 호출 경로 불일치~~ → Integration I0에서 해결(세션 클라이언트 전환 + B7 마이그레이션 적용 + 원격 실사용자 검증). 상세는 `docs/tasks/INTEGRATION_TASKS.md`.
+- [x] ~~원격 DB에 B2~B6 마이그레이션 미적용~~ → Integration I0에서 SQL Editor로 B2~B7 적용 및 검증 완료.
 
 시간대는 추가 사용자 설정 항목으로 두지 않습니다. 기록 시점의 **기기/브라우저 시스템 시간대**를 자동 사용합니다.

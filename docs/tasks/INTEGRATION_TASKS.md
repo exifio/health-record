@@ -57,12 +57,18 @@
   - **마이그레이션:** `20260926090000_b7_session_client_rpc.sql`을 추가했다. B4 RPC 3개에 `auth.uid()` 검증을 넣고 `security definer`로 전환(원래는 service role 전용 grant에만 의존), `retry_daily_summary` RPC를 추가하고, 4개 모두 `authenticated`에 execute를 허용했다. 테이블 grant는 열지 않아 RLS + 함수 검증이 함께 적용된다.
   - **재시도 흐름 변경:** `retryDailySummary()`는 직접 UPDATE 대신 `retry_daily_summary` RPC를 호출한다. 재시도 가능 여부 판정이 DB row lock 안에서 이뤄져 스케줄러 claim과 직렬화된다. 반환값은 `pending` / `missing`(→404) / `not_retryable`(→409).
   - **재발 방지:** `tests/server/session-client-boundary.test.ts` 추가. (1) 사용자 요청 route가 `@/lib/supabase/admin`을 쓰지 않는지(스케줄러·계정 삭제만 예외), (2) write RPC 4종이 `authenticated` grant + `security definer` + `auth.uid()` 검증 + 고정 `search_path`를 갖는지, (3) 스케줄러 전용 RPC가 여전히 `authenticated`에서 차단되는지, (4) 테이블 직접 grant를 새로 열지 않는지 검증한다.
+  - **재현 · 해결:** 원격 `health` 프로젝트 SQL Editor로 마이그레이션을 직접 적용하고, 실제 사용자 세션 토큰으로 RPC를 호출해 검증했다. 테스트 계정으로 `create_record_message` → **HTTP 200**(수정 전 403 FORBIDDEN), `retry_daily_summary` → `"not_retryable"` 반환, `confirm_daily_record` → `SUMMARY_NOT_READY`(grant 동작 확인), 타인 `p_user_id` → 403 FORBIDDEN, 스케줄러 RPC → 403 permission denied. 검증 후 테스트 계정과 row는 모두 삭제했다.
   - **문서:** `docs/DATABASE.md` 10절에 RPC별 호출 주체/권한 검증 표를 추가했다. `docs/API.md` 응답 규칙은 변하지 않는다.
+- **추가 발견:** 마이그레이션 적용 과정에서 원격 DB에 B2~B6이 미적용 상태임을 확인해 함께 적용했다(아래 I5 이후 항목 참고).
 
 ### I5 이후 남은 Backend 영역 이슈 (Integration이 수정하지 않음)
 
-- [!] **B7 마이그레이션 원격 적용 필요.** `20260926090000_b7_session_client_rpc.sql`은 아직 원격 `health` 프로젝트에 적용하지 않았다. 이 저장소에는 Supabase CLI link(접근 토큰/DB 비밀번호)가 없다. 적용 전까지 write API는 기존 상태로 동작한다.
-- [!] **일일 요약 job의 완료 카운터가 잘못 집계됨.** `summary-service.ts`의 `complete_daily_summary` 호출이 `Array.isArray(rows) ? rows[0]?.result : null`로 결과를 읽는데, 해당 함수는 `returns text`라 PostgREST가 스칼라 문자열을 돌려준다. 따라서 성공해도 `completed`가 늘지 않고 `failed`로 집계된다. 요약 자체는 DB에 정상 저장되므로 `다시 정리하기` 흐름에는 영향이 없으나, 스케줄러 응답 카운터와 I-305 검증에서 걸린다. `src/server/**`는 Backend 영역이라 `[!]` 로 남긴다.
+- [x] **B7 마이그레이션 원격 적용 — 완료.** 이 저장소에는 Supabase CLI link 인증 정보가 없어 CLI로는 push할 수 없었다(`supabase/.temp`는 있으나 접근 토큰은 macOS 키체인에 있고 비대화형으로 추출 불가). 대신 로그인된 Supabase Dashboard SQL Editor로 마이그레이션을 직접 적용했다.
+  - **결정적 발견:** 원격 `health` 프로젝트에는 B0/B1만 적용돼 있었고 **B2~B6은 아예 적용되지 않은 상태**였다. 그래서 `public.daily_summaries`가 없어 B4/B6/B7이 전부 `42P01 relation does not exist`로 실패했다. B 노트의 "push 완료" 기록과 실제 상태가 달랐다.
+  - 적용 순서: b2_record_suggestions → b3_daily_summaries → b4_summary_confirmation_corrections → b6_deletion_and_security → b7_session_client_rpc. 각 파일 실행 후 오류 없음을 확인했다.
+  - 적용 후 검증 쿼리: public 테이블 6개, 대상 RPC 13개, B4/B7 4개 RPC의 `authenticated` execute 허용 4/4, 스케줄러 RPC의 `authenticated` 누출 0, 4개 모두 `security definer` + 고정 `search_path` 확인.
+  - `supabase_migrations.schema_migrations`에 5건을 기록해 이후 `supabase db push`가 중복 적용하지 않도록 맞췄다(전체 9건).
+- [x] **일일 요약 job의 완료 카운터 오 집계 — 수정 완료.** `complete_daily_summary`는 `returns text`라 PostgREST가 배열이 아닌 스칼라 문자열을 돌려주는데, 코드가 `rows[0]?.result`로 읽어 성공이에도 `completed`가 늘지 않았다. 원격 DB에서 `retry_daily_summary`가 `"not_retryable"` 문자열을 반환하는 것을 확인해 실제 형태를 검증했고, `readScalarResult()`로 스칼라/배열 모두 처리하도록 고쳤다. 기존 테스트가 잘못된 형태(`[{ result: "ready" }]`)로 mock하고 있어 버그를 통과시키던 상태였는데, mock을 실제 형태로 정정하고 회귀 테스트 2건을 추가했다.
 
 ### I0 검증 결과
 

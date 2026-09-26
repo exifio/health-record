@@ -209,7 +209,15 @@ Frontend UI와 `src/contracts/**`는 임의로 수정하지 않습니다.
 
 ### 추가 결정 필요
 
-- [!] **B-613** Vercel Pro Firewall rate limit으로 최소 보호를 적용하는 방향을 정했다. 현재 Vercel 계정과 저장소에는 `health-record` 프로젝트가 아직 연결되어 있지 않아 규칙을 만들거나 검증할 수 없다. 프로젝트 연결 후 메시지 write, AI suggestion, summary retry, internal endpoint를 우선 Log로 관찰하고, 정상 트래픽을 기준으로 한도를 정해 429 제한을 검증한다. 정확한 사용자별 전역 quota가 필요하면 별도 공유 counter가 필요하다.
+- [!] **B-613** Vercel Pro Firewall rate limit으로 최소 보호를 적용하는 방향은 유효하다. Integration이 계정 상태를 확인한 결과 `exifio-4593s-projects`(plan `pro`)에 로그인되어 있어 Firewall 사용 요건은 충족된다. 남은 유일한 막힘은 **health-record 프로젝트가 아직 생성/연결되지 않았다**는 점이다.
+  - 대안 두 가지: (1) Vercel 프로젝트를 만들어 배포한 뒤 WAF rate limit 규칙을 건다(배포 자체가 제품 공개 결정이므로 사용자 승인 필요), (2) 배포를 미루고 규칙 정의를 문서로만 남겨 배포 시점에 적용한다.
+  - 적용 대상 우선순위: 메시지 write > AI suggestion > summary retry > internal endpoint. 사용자별 전역 quota가 필요하면 별도 공유 counter가 필요하다.
+
+### Integration 실측 기록 (I0, 2026-09-26)
+
+- 원격 `health` 프로젝트에는 B0/B1만 적용돼 있었고 B2~B6이 미적용이었다. Integration이 SQL Editor로 B2~B7을 적용하고 실제 사용자 세션으로 write RPC를 검증했다(성공/권한/격리 3종). 상세는 `docs/tasks/INTEGRATION_TASKS.md`.
+- 일일 요약 job의 `complete_daily_summary` 반환값 해석 오류(스칼라 문자열을 배열로 가정)도 수정되었다.
+- **후속 규칙:** 마이그레이션 적용 완료를 문서에 적을 때는 `supabase_migrations.schema_migrations` 조회로 원격 상태를 확인할 것.
 
 ---
 

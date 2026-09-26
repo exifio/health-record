@@ -103,7 +103,7 @@ describe("runDailySummaryJob", () => {
       messages: [{ id: MESSAGE_ID, content: "아침에 두통", created_at: "2026-09-25T00:20:00.000Z" }],
       rpc: async (name) => {
         if (name === "claim_daily_summary") return { data: [{ record_id: RECORD_ID, content_revision: SOURCE_REVISION }], error: null };
-        if (name === "complete_daily_summary") return { data: [{ result: "ready" }], error: null };
+        if (name === "complete_daily_summary") return { data: "ready", error: null };
         return { data: [], error: null };
       },
     });
@@ -129,7 +129,7 @@ describe("runDailySummaryJob", () => {
       messages: [{ id: MESSAGE_ID, content: "아침에 두통", created_at: "2026-09-25T00:20:00.000Z" }],
       rpc: async (name) => name === "claim_daily_summary"
         ? { data: [{ record_id: RECORD_ID, content_revision: SOURCE_REVISION }], error: null }
-        : { data: [{ result: "stale" }], error: null },
+        : { data: "stale", error: null },
     });
 
     await expect(runDailySummaryJob(supabase as never)).resolves.toEqual({ claimed: 1, completed: 0, failed: 1 });
@@ -142,7 +142,7 @@ describe("runDailySummaryJob", () => {
       messages: [{ id: MESSAGE_ID, content: "아침에 두통", created_at: "2026-09-25T00:20:00.000Z" }],
       rpc: async (name) => name === "claim_daily_summary"
         ? { data: [{ record_id: RECORD_ID, content_revision: SOURCE_REVISION }], error: null }
-        : { data: [{ result: "failed" }], error: null },
+        : { data: "failed", error: null },
     });
 
     await expect(runDailySummaryJob(supabase as never)).resolves.toEqual({ claimed: 1, completed: 0, failed: 1 });
@@ -150,6 +150,30 @@ describe("runDailySummaryJob", () => {
       name: "fail_daily_summary",
       args: { p_record_id: RECORD_ID, p_source_revision: SOURCE_REVISION },
     });
+  });
+
+  it("returns text RPC의 실제 반환 형태(스칼라 문자열)로 완료 카운터를 센다", async () => {
+    // PostgREST는 returns text 함수에 대해 배열이 아닌 스칼라 문자열을 돌려준다.
+    // 원격 DB에서 retry_daily_summary가 "not_retryable" 문자열을 반환하는 것으로 확인했다.
+    const supabase = makeSupabase([record()], {
+      messages: [{ id: MESSAGE_ID, content: "아침에 두통", created_at: "2026-09-25T00:20:00.000Z" }],
+      rpc: async (name) => name === "claim_daily_summary"
+        ? { data: [{ record_id: RECORD_ID, content_revision: SOURCE_REVISION }], error: null }
+        : { data: "ready", error: null },
+    });
+
+    await expect(runDailySummaryJob(supabase as never)).resolves.toEqual({ claimed: 1, completed: 1, failed: 0 });
+  });
+
+  it("예상하지 못한 반환 형태는 실패로 집계한다", async () => {
+    const supabase = makeSupabase([record()], {
+      messages: [{ id: MESSAGE_ID, content: "아침에 두통", created_at: "2026-09-25T00:20:00.000Z" }],
+      rpc: async (name) => name === "claim_daily_summary"
+        ? { data: [{ record_id: RECORD_ID, content_revision: SOURCE_REVISION }], error: null }
+        : { data: null, error: null },
+    });
+
+    await expect(runDailySummaryJob(supabase as never)).resolves.toEqual({ claimed: 1, completed: 0, failed: 1 });
   });
 });
 

@@ -2,7 +2,8 @@
 --
 -- 배경: B1/B6 RPC는 auth.uid()로 권한을 검증하지만 서버가 service role 키로 호출해
 -- auth.uid()가 NULL이 되어 항상 FORBIDDEN이었다. B4 RPC는 반대로 service role 전용 grant에
--- 의존하고 auth.uid() 검증을 하지 않았다.
+-- 의존하고 auth.uid() 검증을 하지 않았다. 두 패턴 모두 서버가 사용자 세션 클라이언트로
+-- 호출하도록 통일한다.
 --
 -- 규칙:
 -- 1) 사용자 데이터 write RPC는 첫 줄에서 auth.uid()와 p_user_id를 대조한다.
@@ -71,6 +72,9 @@ begin
   return query
   select ds.source_revision, ds.ai_draft, ds.user_final, ds.generated_at
     from public.daily_summaries ds
+   where ds.id = v_summary.id;
+end;
+$fn$;
 
 -- 확정: auth.uid() 검증 + security definer.
 create or replace function public.confirm_daily_record(
@@ -137,10 +141,6 @@ begin
 end;
 $fn$;
 
-   where ds.id = v_summary.id;
-end;
-$fn$;
-
 -- 정정 추가: auth.uid() 검증 + security definer.
 create or replace function public.create_record_correction(
   p_user_id uuid,
@@ -183,8 +183,6 @@ begin
   return query select v_correction.id, v_correction.content, v_correction.created_at;
 end;
 $fn$;
-
-
 
 -- 요약 재시도 (API.md 9절): AI를 호출하지 않고 pending으로 되돌리기만 한다.
 -- 상태 전이는 row lock 안에서 처리해 스케줄러 claim과 직렬화된다.
