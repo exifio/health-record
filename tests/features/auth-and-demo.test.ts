@@ -25,11 +25,11 @@ describe("F1: Login, Demo Mode, Onboarding", () => {
       expect(html).toContain("하루의 건강 상태를 편하게 남기고 AI 정리로 확인해보세요.");
 
       // F-102: Google login
-      expect(html).toContain("Google로 계속하기");
+      expect(html).toContain("구글로 로그인");
       expect(html).toContain('data-testid="google-login-btn"');
 
       // F-103: Kakao login disabled
-      expect(html).toContain("Kakao 로그인 — 준비 중");
+      expect(html).toContain("카카오로 로그인");
       expect(html).toContain("disabled");
       expect(html).toContain('aria-disabled="true"');
 
