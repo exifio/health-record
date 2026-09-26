@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import type { DailyRecord, DailySummaryContent, LocalDate } from "@/contracts";
+import { API_ERROR_CODES, isApiError } from "@/features/records/api/health-api";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { LoadingState } from "@/components/common/LoadingState";
 import { RecordTimeline } from "@/components/records/RecordTimeline";
@@ -14,6 +15,26 @@ export interface DailySummaryCardProps {
   onConfirmRecord?: () => Promise<void>;
   onCreateCorrection?: (content: string) => Promise<void>;
   onDeleteRecord?: () => Promise<void>;
+}
+
+/**
+ * I-401~I-404: 실패 이유를 error code로 안내한다.
+ * 실제 Backend는 상태 충돌을 409 code로 구분해 돌려주므로 메시지 문자열에 의존하지 않는다.
+ */
+function actionErrorMessage(error: unknown, fallback: string): string {
+  if (isApiError(error, API_ERROR_CODES.summaryStale)) {
+    return "원문이 바뀌어 최신 요약이 아닙니다. 다시 정리한 뒤 확정해 주세요.";
+  }
+  if (isApiError(error, API_ERROR_CODES.summaryNotReady)) {
+    return "아직 확정할 수 있는 요약이 준비되지 않았어요. 잠시 후 다시 시도해 주세요.";
+  }
+  if (isApiError(error, API_ERROR_CODES.recordConfirmed)) {
+    return "이미 확정된 기록이라 수정할 수 없어요.";
+  }
+  if (isApiError(error, API_ERROR_CODES.recordNotConfirmed)) {
+    return "확정된 기록에만 정정 기록을 추가할 수 있어요.";
+  }
+  return fallback;
 }
 
 export function DailySummaryCard({
@@ -40,9 +61,14 @@ export function DailySummaryCard({
       missingInformation: [],
     };
 
-  const [editTimelineText, setEditTimelineText] = useState(
-    activeContent.timeline.map((t) => t.text).join("\n")
-  );
+  // 편집 시작 시점의 최신 요약에서 초안을 만든다. reload로 요약이 갱신되어도 지난 편집 내용이 남지 않는다.
+  const [editTimelineText, setEditTimelineText] = useState("");
+
+  const startEditing = () => {
+    setEditTimelineText(activeContent.timeline.map((t) => t.text).join("\n"));
+    setActionError(null);
+    setIsEditing(true);
+  };
 
   const isConfirmed = record.recordStatus === "confirmed";
   const { summaryStatus } = record;
@@ -53,8 +79,8 @@ export function DailySummaryCard({
       setIsSubmitting(true);
       setActionError(null);
       await onRetrySummary();
-    } catch {
-      setActionError("재정리 요청에 실패했습니다. 다시 시도해주세요.");
+    } catch (err: unknown) {
+      setActionError(actionErrorMessage(err, "재정리 요청에 실패했습니다. 다시 시도해주세요."));
     } finally {
       setIsSubmitting(false);
     }
@@ -81,8 +107,8 @@ export function DailySummaryCard({
 
       await onUpdateSummary(updatedContent);
       setIsEditing(false);
-    } catch {
-      setActionError("요약 수정 저장에 실패했습니다.");
+    } catch (err: unknown) {
+      setActionError(actionErrorMessage(err, "요약 수정 저장에 실패했습니다."));
     } finally {
       setIsSubmitting(false);
     }
@@ -94,8 +120,8 @@ export function DailySummaryCard({
       setIsSubmitting(true);
       setActionError(null);
       await onConfirmRecord();
-    } catch {
-      setActionError("기록 확정에 실패했습니다.");
+    } catch (err: unknown) {
+      setActionError(actionErrorMessage(err, "기록 확정에 실패했습니다."));
     } finally {
       setIsSubmitting(false);
     }
@@ -109,8 +135,8 @@ export function DailySummaryCard({
       setActionError(null);
       await onCreateCorrection(correctionText.trim());
       setCorrectionText("");
-    } catch {
-      setActionError("정정 기록 저장에 실패했습니다.");
+    } catch (err: unknown) {
+      setActionError(actionErrorMessage(err, "정정 기록 저장에 실패했습니다."));
     } finally {
       setIsSubmitting(false);
     }
@@ -123,8 +149,8 @@ export function DailySummaryCard({
       setActionError(null);
       await onDeleteRecord();
       setShowDeleteConfirm(false);
-    } catch {
-      setActionError("기록 삭제에 실패했습니다.");
+    } catch (err: unknown) {
+      setActionError(actionErrorMessage(err, "기록 삭제에 실패했습니다."));
     } finally {
       setIsSubmitting(false);
     }
@@ -283,7 +309,7 @@ export function DailySummaryCard({
                   <button
                     type="button"
                     className="btn-secondary"
-                    onClick={() => setIsEditing(true)}
+                    onClick={startEditing}
                     data-testid="edit-summary-btn"
                   >
                     정리 내용 수정

@@ -135,12 +135,38 @@ export function TodayRecordView() {
     });
   };
 
+  // I-403: 서버에서 이미 확정된 기록으로 바뀐 경우 원문 편집 시도가 409로 거절된다.
+  // 그때는 편집 UI를 그대로 두지 않고 서버 상태를 다시 읽어 확정 상태로 맞춘다.
+  const syncRecord = useCallback(async () => {
+    try {
+      const res = await api.getDailyRecord(todayDate);
+      setRecord(res.record);
+      setMessages(res.record.messages);
+    } catch {
+      // 상태 동기화는 부수 작업이라 사용자에게 새 오류로 올리지 않는다.
+    }
+  }, [api, todayDate]);
+
+  const guardConfirmed = useCallback(
+    async <T,>(action: () => Promise<T>): Promise<T> => {
+      try {
+        return await action();
+      } catch (error: unknown) {
+        if (isApiError(error, API_ERROR_CODES.recordConfirmed)) await syncRecord();
+        throw error;
+      }
+    },
+    [syncRecord],
+  );
+
   // F-204 & F-212: Create message passing systemTimeZone metadata
   const handleCreateMessage = async (content: string) => {
-    const res = await api.createMessage(todayDate, {
-      content,
-      systemTimeZone, // F-212
-    });
+    const res = await guardConfirmed(() =>
+      api.createMessage(todayDate, {
+        content,
+        systemTimeZone, // F-212
+      }),
+    );
 
     setMessages((prev) => [...prev, res.message]);
     if (record) {
@@ -158,7 +184,7 @@ export function TodayRecordView() {
 
   // F-206: Update message
   const handleUpdateMessage = async (messageId: string, content: string) => {
-    const res = await api.updateMessage(todayDate, messageId, { content });
+    const res = await guardConfirmed(() => api.updateMessage(todayDate, messageId, { content }));
     setMessages((prev) =>
       prev.map((m) => (m.id === messageId ? res.message : m))
     );
@@ -174,7 +200,7 @@ export function TodayRecordView() {
 
   // F-207: Delete message
   const handleDeleteMessage = async (messageId: string) => {
-    await api.deleteMessage(todayDate, messageId);
+    await guardConfirmed(() => api.deleteMessage(todayDate, messageId));
     setMessages((prev) => prev.filter((m) => m.id !== messageId));
   };
 

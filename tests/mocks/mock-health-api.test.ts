@@ -95,3 +95,54 @@ describe("createMockHealthApi (F-007)", () => {
     await api.deleteAccount();
   });
 });
+
+describe("createMockHealthApi — business rule parity with real backend (I-001)", () => {
+  const staleMessage = { content: "오후에 다시 속이 불편", systemTimeZone: "Asia/Seoul" };
+
+  it("blocks confirmation when the summary is stale after a source change (SUMMARY_STALE)", async () => {
+    const api = createMockHealthApi();
+
+    // 원문 추가 → content_revision 증가, 요약을 stale로 표시 (실제 서버와 동일)
+    await api.createMessage("2026-09-25", staleMessage);
+    const afterChange = await api.getDailyRecord("2026-09-25");
+    expect(afterChange.record.summaryStatus).toBe("stale");
+
+    await expect(api.confirmRecord("2026-09-25")).rejects.toMatchObject({
+      code: "SUMMARY_STALE",
+      status: 409,
+    });
+  });
+
+  it("blocks editing a stale summary (SUMMARY_STALE)", async () => {
+    const api = createMockHealthApi();
+    await api.createMessage("2026-09-25", staleMessage);
+
+    await expect(
+      api.updateSummary("2026-09-25", {
+        timeline: [{ text: "속쓰림", sourceMessageIds: [] }],
+        medications: [],
+        missingInformation: [],
+      }),
+    ).rejects.toMatchObject({ code: "SUMMARY_STALE", status: 409 });
+  });
+
+  it("blocks corrections before the record is confirmed (RECORD_NOT_CONFIRMED)", async () => {
+    const api = createMockHealthApi();
+
+    await expect(api.createCorrection("2026-09-25", { content: "정정입니다." })).rejects.toMatchObject({
+      code: "RECORD_NOT_CONFIRMED",
+      status: 409,
+    });
+  });
+
+  it("marks summaryStatus stale when the source changed after the summary was generated", async () => {
+    const api = createMockHealthApi();
+    const before = await api.getDailyRecord("2026-09-25");
+    expect(before.record.summaryStatus).toBe("ready");
+
+    await api.createMessage("2026-09-25", staleMessage);
+    const after = await api.getDailyRecord("2026-09-25");
+    expect(after.record.contentRevision).toBeGreaterThan(before.record.contentRevision);
+    expect(after.record.summaryStatus).toBe("stale");
+  });
+});

@@ -74,23 +74,57 @@ export function RecordDateContent({ date }: { date: LocalDate }) {
       .finally(() => setIsLoading(false));
   };
 
+  // I-403: 상태 충돌(확정/오래된 요약)은 서버 상태가 이미 바뀌었다는 뜻이다.
+  // 카드를 언마운트하지 않고 상태만 조용히 다시 맞춰 실제 상태와 다른 편집 UI가 남지 않게 한다.
+  const CONFLICT_CODES = [
+    API_ERROR_CODES.recordConfirmed,
+    API_ERROR_CODES.recordNotConfirmed,
+    API_ERROR_CODES.summaryStale,
+    API_ERROR_CODES.summaryNotReady,
+  ] as const;
+
+  const syncAfterConflict = async (error: unknown) => {
+    if (!CONFLICT_CODES.some((code) => isApiError(error, code))) return;
+    try {
+      const res = await api.getDailyRecord(date);
+      setRecord(res.record);
+    } catch {
+      // 상태 동기화는 부수 작업이라 사용자에게 새 오류로 올리지 않는다.
+    }
+  };
+
   const handleRetrySummary = async () => {
     await api.retrySummary(date);
     reload();
   };
 
   const handleUpdateSummary = async (content: DailySummaryContent) => {
-    await api.updateSummary(date, content);
+    try {
+      await api.updateSummary(date, content);
+    } catch (error: unknown) {
+      await syncAfterConflict(error);
+      throw error;
+    }
     reload();
   };
 
   const handleConfirmRecord = async () => {
-    await api.confirmRecord(date);
+    try {
+      await api.confirmRecord(date);
+    } catch (error: unknown) {
+      await syncAfterConflict(error);
+      throw error;
+    }
     reload();
   };
 
   const handleCreateCorrection = async (content: string) => {
-    await api.createCorrection(date, { content });
+    try {
+      await api.createCorrection(date, { content });
+    } catch (error: unknown) {
+      await syncAfterConflict(error);
+      throw error;
+    }
     reload();
   };
 

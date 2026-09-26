@@ -82,6 +82,9 @@ export const API_ERROR_CODES = {
   recordConfirmed: "RECORD_CONFIRMED",
   recordNotConfirmed: "RECORD_NOT_CONFIRMED",
   recordDateNotWritable: "RECORD_DATE_NOT_WRITABLE",
+  summaryNotReady: "SUMMARY_NOT_READY",
+  summaryStale: "SUMMARY_STALE",
+  summaryNotRetryable: "SUMMARY_NOT_RETRYABLE",
   unauthenticated: "UNAUTHENTICATED",
 } as const;
 
