@@ -340,10 +340,10 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 - [x] **I-711** 정정 기록 전체 흐름 검증
 - [x] **I-712** 진료 준비 전체 흐름 검증
 - [x] **I-713** 삭제 확인 전체 흐름 검증
-- [~] **I-714** 개인정보/AI 처리 안내 문구 — Supabase Free 선택 반영, 별도 백업·보존 정책·최종 승인·동의 방식 확인 대기
+- [!] **I-714** 개인정보/AI 처리 안내 문구 — Supabase Free 사실 확인은 반영했으며, 백업·복구 방식/보존 고지와 동의 방식 및 최종 문구 승인은 사용자 결정 대기
 - [x] **I-715** Production 환경변수 — 7/7 등록, `OPENAI_API_KEY` Production 등록 확인(값 비노출)
-- [~] **I-716** 배포 준비 완료 표시 — 최종 배포 게이트 정합 및 설정 준비 중
-- [~] **I-717** B-613 rate limit — 규칙 게시 완료, 배포 후 429 상태·본문 검증 대기 (`docs/SECURITY.md` 10절)
+- [!] **I-716** 배포 준비 완료 표시 — Production 배포·환경변수·Cron·rate limit은 확인됐으나 I-714 개인정보/동의/백업 결정 전이라 출시 준비 완료로 표시하지 않음
+- [x] **I-717** B-613 rate limit — Firewall 활성화와 12개 유효 규칙, 실제 429 및 본문을 확인함 (`docs/SECURITY.md` 10절)
 
 ### 남은 3건 처리 결과 (2026-09-26 당시 기록)
 
@@ -392,11 +392,11 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 
 ### 2026-09-27 실계정 후속 점검 — 현재 상태
 
-- **I-714 / 개인정보 및 백업:** 사용자가 Supabase Free 유지를 결정했다. 안내 문구는 UI에 반영됐지만 최종 승인은 남아 있다. Free에는 보장된/대시보드에서 내려받을 수 있는 일일 백업 기능이 포함되지 않지만, Supabase FAQ는 Free 프로젝트에도 최대 7개의 일일 백업이 생성돼 업그레이드 후 이용 가능할 수 있다고 안내한다. 프로젝트 백업의 존재·기간은 확인하지 않았다. Free 선택에 맞는 별도 백업·복구 방식을 마련하고 실제 보존 기간을 확인하기 전에는 고지에 기간 숫자를 추가하지 않는다([백업 안내](https://supabase.com/docs/guides/platform/backups), [Free 프로젝트 FAQ](https://supabase.com/docs/guides/troubleshooting/will-backups-be-accessible-from-the-dashboard-immediately-after-upgrading-to-a-paid-plan-hXY4rs)). PRD 9-3 동의 방식과 구현도 결정 전이다.
+- **I-714 / 개인정보 및 백업:** 사용자는 Supabase Free 유지를 선택했다. 현재 공식 문서상 Free에는 포함된 자동 백업과 대시보드 다운로드가 없으며, 별도 FAQ는 Free 프로젝트에도 현재 최대 7개의 일일 백업이 생성되어 유료 플랜으로 올린 뒤 제공될 수 있지만 향후 중단될 수 있다고 안내한다. Supabase는 Free 프로젝트에 정기 `db dump`와 off-site 백업을 권한다. 이 프로젝트의 실제 백업 존재/보존은 확인하지 않았고 별도 백업 대상도 정하지 않았다. 따라서 UI 문구 최종 승인, 실제 복구 경로/보존 정책 결정, PRD 9-3 동의 방식 결정이 남아 있어 기간 숫자를 추가하지 않았다([백업 안내](https://supabase.com/docs/guides/platform/backups), [Free 프로젝트 FAQ](https://supabase.com/docs/guides/troubleshooting/will-backups-be-accessible-from-the-dashboard-immediately-after-upgrading-to-a-paid-plan-hXY4rs)).
 - **인증 보안:** 원격 Auth 설정은 email과 Google이 모두 켜져 있고 `disable_signup=false`다. `auth_leaked_password_protection` Advisor 경고가 남아 있으며 현재 Free 플랜에서는 해당 보호 설정을 사용할 수 없다([Supabase 문서](https://supabase.com/docs/guides/auth/password-security)). 인증 제공자를 변경하거나 유료 플랜으로 올리지는 않았다. Advisor의 `SECURITY DEFINER` 경고 10건은 함수별로 확인했다: 전부 빈 `search_path`, `auth.uid()` 검증, authenticated 실행 허용, anon 실행 거부가 적용돼 있다. Performance Advisor 경고는 없었다.
-- **I-715 / Vercel Production:** `health-record` 프로젝트를 `exifio-4593s-projects`에 만들고 Next.js로 연결했다. Production 변수 7개를 등록했다: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_USE_MOCK=false`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `CRON_SECRET`. `vercel env list production`에서 `OPENAI_API_KEY`의 Production 대상 등록을 확인했으며 값은 읽거나 출력하지 않았다. Secret 변수는 sensitive로 등록돼 있다. 로컬 `.env.local`에는 `OPENAI_BASE_URL`이 없어 Production에도 설정하지 않았다. 아직 배포 및 Cron 실행은 검증되지 않았다.
-- **I-717 / Firewall:** Vercel CLI로 경로별 rate limit 12개를 만들고 2026-09-27 Production 설정에 게시했다. 전부 IP 기준 fixed window 60초이며 각 요청 한도는 위 표와 같다. 배포된 API 경로가 없어 실제 `429` 발생 및 응답 본문이 비어 있는지는 검증하지 않았다. Vercel은 region별 counter를 사용하므로 전역 quota 보장은 아니다(`docs/SECURITY.md` 10절).
-- **배포 게이트:** 개인정보 문구 승인, Free 플랜에 맞는 별도 백업·복구 및 보존 정책, 동의 방식, email/password 제공자 설정, Production 배포, Cron 및 429 실측이 남아 있다. Production 변수 등록은 I-715에서 완료했다.
+- **I-715 / Vercel Production:** Production 변수 7개를 등록했다: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_USE_MOCK=false`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `CRON_SECRET`. `OPENAI_API_KEY`는 Production 대상의 sensitive 변수로 존재하며 값은 읽거나 출력하지 않았다. 배포 `health-record-nou1g1j12-exifio-4593s-projects.vercel.app`은 `READY`/Production이다. `vercel crons list`에서 `/api/internal/daily-summary/run`의 `0 * * * *` 등록을 확인했고, Production runtime log에 18:00:02 UTC의 GET 200이 있다. 시각은 Cron 일정과 일치하지만 응답 내용/처리 건수는 읽지 않았으며, 기록 요약 생성 자체를 검증한 것은 아니다.
+- **I-717 / Firewall:** 처음 조회했을 때 12개 rate-limit 규칙은 active/valid였지만 프로젝트의 `firewallEnabled`가 `false`라 실제 적용되지 않았다. 기존 규칙·조건·값을 보존해 Firewall만 켰고, Vercel overview에서 `Enabled`, 12 active 규칙을 다시 확인했다. 내부 스케줄러 GET을 같은 60초 동안 5회 호출한 결과 1~4회는 앱의 무인증 `403`, 5회째는 WAF `429`였다. 429 본문은 비어 있지 않은 75바이트 `text/plain`이며 검사한 health 관련 문자열은 없었다. 4회/분 내부 규칙은 실측했고, 나머지 11개 한도는 실제로 초과 호출하지 않고 active/valid 설정만 확인했다. 카운터는 region별이어서 전역 quota가 아니다(`docs/SECURITY.md` 10절).
+- **배포 게이트:** 배포 `READY`, 7개 환경변수, 시간대에 맞는 scheduler GET 200, WAF 429는 확인했다. 아직 개인정보 문구의 사용자 승인, Supabase Free용 별도 백업·복구 및 실제 보존 정책, PRD 9-3 동의 방식/구현, 한국 대상 국외 이전 안내 판단이 남아 있다. 현재 email과 Google Auth가 켜져 있고 signup도 허용되어 있으며, Supabase Free에서는 유출 비밀번호 보호를 사용할 수 없다. 이 인증 구성을 유지할지 포함해 사람이 결정하기 전에는 I-716을 완료하거나 출시 준비 완료로 표시하지 않는다.
 
 ### I7 진행 기록 (2026-09-26)
 

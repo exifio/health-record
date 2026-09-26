@@ -112,7 +112,7 @@ MVP에서도 다음은 abuse 방지를 위해 기본 제한을 고려합니다.
 - **엣지에서 Vercel Firewall(WAF)으로 적용합니다.** 앱 코드에 rate limit 로직을 넣지 않습니다.
   - 서버리스 인스턴스는 요청마다 새로 올라가므로 IP별 카운트를 앱 메모리나 파일로 유지할 수 없습니다.
   - Vercel Pro 플랜이라 WAF 사용 요건은 충족됩니다(계정 `exifio-4593s-projects`, plan `pro`).
-- **적용 상태(2026-09-27):** Vercel `exifio-4593s-projects/health-record` 프로젝트에 경로·HTTP method별 규칙 12개를 게시했다. Firewall 설정은 배포 없이 즉시 반영되므로, 배포된 경로가 생기면 바로 적용된다. 실제 429 결과는 I-717에서 배포 후 확인한다.
+- **적용 상태(2026-09-27):** Vercel `exifio-4593s-projects/health-record`의 rate limit 규칙 12개를 게시했다. 최초 실측에서 프로젝트 `firewallEnabled=false`를 발견해 기존 규칙을 보존한 채 Firewall을 활성화했다. 이후 overview에서 Firewall `Enabled`와 12개 active 규칙을 확인했다. 내부 scheduler GET은 한도 이내 4회가 앱의 무인증 `403`, 5회째가 WAF `429`였다. 다른 11개 경로는 active/valid 설정을 확인했지만 Production에서 한도 초과 부하 테스트는 하지 않았다.
 - **한도 범위:** Vercel은 rate limit counter를 region별로 집계한다. 여러 region으로 요청이 분산되면 한 region에 설정한 수보다 전체 허용량이 커질 수 있으므로, 전역 quota로 취급하지 않는다.
 - **사용자별 전역 quota가 필요하면 별도 공유 저장소가 필요합니다.** MVP 범위 밖입니다(AGENTS §3).
 
@@ -133,17 +133,19 @@ MVP에서도 다음은 abuse 방지를 위해 기본 제한을 고려합니다.
 
 ### 초과 시 응답
 
-- WAF가 `429`를 반환해야 합니다. 빈 응답 본문은 배포 후 실제 경로에서 확인한다. 확인 전에는 Vercel의 기본 429 본문이 비어 있다고 간주하지 않는다.
+- WAF가 `429`를 반환해야 합니다. 2026-09-27 내부 scheduler 경로의 실제 응답은 비어 있지 않은 75바이트 `text/plain`이었고, health 관련 내용은 없었다. Vercel 기본 본문이 비어 있다고 가정하지 말고 변경 후 다시 확인한다.
 - 앱 코드에 `RATE_LIMITED` 오류 코드는 두지 않습니다. 429는 엣지에서만 발생하므로
   `docs/API.md`의 error code 목록에 추가하지 않습니다.
 - 프론트엔드는 429를 일반 저장 실패로 표시합니다. 원인을 사용자에게 설명하지 않습니다.
 
 ### 배포 시 검증 순서 (I7)
 
-1. 각 경로에 대해 허용 한도 이하 반복 호출이 전부 성공하는지 확인
-2. 한도를 초과해 호출해 429가 오는지 확인
-3. 429 응답 본문에 health 정보가 없는지 확인
+1. 각 경로의 active/valid 설정과 method/path 조건 확인
+2. 낮은 한도의 무인증 내부 scheduler 경로에서 허용 한도 4회와 초과 429를 실측
+3. 실제 429 응답 본문에 health 정보가 없는지 확인
 4. 위 4개 AI/write 경로의 Vercel 로그에 정상 트래픽 기준치를 확인하고 한도를 조정
+
+고한도(예: 120회/분) 경로는 Production에서 121회 이상 발생시키는 부하를 만들지 않는다. 필요할 때는 Preview/격리 환경에서 별도로 검증한다.
 
 ## 11. Internal Scheduler Endpoint
 
