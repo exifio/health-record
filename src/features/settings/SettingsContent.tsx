@@ -117,7 +117,16 @@ export function SettingsContent() {
               • AI는 의료 진단, 질병 예측, 약 추천을 수행하지 않으며, 일일 요약 보조 기능으로만 활용됩니다.
             </p>
             <p className="policy-info-text">
-              • 작성하신 건강 정보는 철저히 사용자 본인 계정에만 격리 보관됩니다.
+              • AI 정리를 위해 그날 작성한 기록의 <strong>내용이 OpenAI(외부 AI 처리자)로 전송</strong>됩니다. AI는
+              대화하지 않고 기록을 정리만 하며, 전송된 내용으로 원본이 바뀌지는 않습니다.
+            </p>
+            <p className="policy-info-text">
+              • 작성하신 건강 정보는 철저히 사용자 본인 계정에만 격리 보관되며, 다른 사용자에게 제공되지 않습니다.
+            </p>
+            <p className="policy-info-text">
+              • <strong>전체 건강 기록 삭제·계정 삭제</strong>를 하면 서비스가 사용하는 데이터베이스에서는 즉시
+              반영됩니다. 다만 운영을 위한 백업 사본은 내부 보존 정책에 따라 일정 기간 남아 있을 수 있으며,
+              기간이 지나면 복구할 수 없습니다.
             </p>
           </div>
         </section>
