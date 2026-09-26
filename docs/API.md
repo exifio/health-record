@@ -23,7 +23,7 @@
 }
 ```
 
-대표 status/code: `400 VALIDATION_ERROR`, `401 UNAUTHENTICATED`, `403 FORBIDDEN`, `404 RECORD_NOT_FOUND | MESSAGE_NOT_FOUND`, `409 RECORD_CONFIRMED | RECORD_NOT_CONFIRMED | SUMMARY_NOT_READY | SUMMARY_STALE | SUMMARY_NOT_RETRYABLE`, `500 INTERNAL_ERROR`, `503 AI_SUGGESTION_FAILED | AI_SUMMARY_FAILED`.
+대표 status/code: `400 VALIDATION_ERROR | RECORD_DATE_NOT_WRITABLE`, `401 UNAUTHENTICATED`, `403 FORBIDDEN`, `404 RECORD_NOT_FOUND | MESSAGE_NOT_FOUND`, `409 RECORD_CONFIRMED | RECORD_NOT_CONFIRMED | SUMMARY_NOT_READY | SUMMARY_STALE | SUMMARY_NOT_RETRYABLE`, `500 INTERNAL_ERROR`, `503 AI_SUGGESTION_FAILED | AI_SUMMARY_FAILED`.
 
 ## 2. 공통 타입
 
@@ -132,8 +132,12 @@ Response 201:
 Rules:
 - confirmed record → 409
 - future date → 400
-- past date는 기존 draft record가 있을 때만 추가 허용하는 것을 MVP 기본안으로 함
-- 과거에 record가 전혀 없던 날짜를 새로 만드는 기능은 추가 결정 필요
+- 기록이 이미 있는 draft record에는 과거 날짜라도 추가할 수 있습니다.
+- 오늘 날짜의 첫 기록은 daily record를 새로 만듭니다.
+- **기록이 전혀 없는 과거 날짜에는 새로 작성할 수 없습니다 → 400 `RECORD_DATE_NOT_WRITABLE`.**
+  - "그날 아무것도 기록하지 않았다"는 사실을 보존해, 기록이 없는 날짜를 증상이 없었던 날로 해석하지 않도록 합니다.
+  - 이 규칙은 `systemTimeZone` 기준 오늘 날짜로 판정하며 사용자에게 timezone을 선택하게 하지 않습니다.
+  - 확정된 과거 기록에 정정을 남기는 흐름은 12절 `POST /api/daily-records/:date/corrections`를 사용합니다.
 
 ## 6. 메시지 수정
 

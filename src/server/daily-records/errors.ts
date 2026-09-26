@@ -40,6 +40,11 @@ const DB_ERROR_CODES: Record<string, { code: string; message: string; status: nu
     message: "기록을 찾을 수 없습니다.",
     status: 404,
   },
+  RECORD_DATE_NOT_WRITABLE: {
+    code: "RECORD_DATE_NOT_WRITABLE",
+    message: "이 날짜에는 처음 기록을 남길 수 없어요. 그날 기록을 남기지 않았다면 오늘부터 기록해 주세요.",
+    status: 400,
+  },
   MESSAGE_NOT_FOUND: {
     code: "MESSAGE_NOT_FOUND",
     message: "메시지를 찾을 수 없습니다.",

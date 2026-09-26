@@ -76,4 +76,17 @@ describe("I-005 사용자 write API 세션 클라이언트 전환", () => {
 
     expect(sql).not.toMatch(/grant (insert|update|delete|all).* on public\./);
   });
+
+  it("기록이 없는 과거 날짜 신규 작성은 DB에서 거절하고 오늘은 허용한다", () => {
+    const sql = migration("20260926100000_b8_no_backfill_past_dates.sql");
+
+    expect(sql).toContain("create or replace function public.create_record_message(");
+    expect(sql).toContain("raise exception 'RECORD_DATE_NOT_WRITABLE'");
+    // 오늘 날짜의 첫 기록은 여전히 record를 생성하고, 과거 날짜만 막는다.
+    expect(sql).toMatch(/if not found then[\s\S]*?p_local_date < v_today[\s\S]*?insert into public\.daily_records/);
+    // 미래 날짜 거절, 확정 기록 거절, 권한 검증은 유지된다.
+    expect(sql).toContain("if p_local_date > v_today then");
+    expect(sql).toContain("raise exception 'RECORD_CONFIRMED'");
+    expect(sql).toContain("if (select auth.uid()) is distinct from p_user_id then");
+  });
 });

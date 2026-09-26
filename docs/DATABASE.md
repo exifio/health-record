@@ -208,6 +208,15 @@ write RPC는 모두 `security definer` + `set search_path = ''`로 선언하고,
 테이블을 씁니다. `authenticated`에 테이블 `insert/update/delete` grant를 열지 않으므로
 RLS와 함수 검증이 함께 사용자의 경로가 됩니다.
 
+### 기록하지 않은 과거 날짜를 새로 만들지 않는 규칙
+
+`create_record_message`는 `systemTimeZone` 기준 오늘 날짜에만 daily record를 새로 만듭니다.
+과거 날짜에 record가 없으면 `RECORD_DATE_NOT_WRITABLE`(400)로 거절하고, 이미 존재하는
+과거 draft record에는 계속 메시지를 추가할 수 있습니다.
+
+"그날 아무것도 기록하지 않았다"는 사실을 보존해, 기록이 없는 날짜를 증상이 없었던 날로
+해석하지 않게 하는 규칙입니다(PRD 원칙).
+
 ## 11. 삭제 정책
 
 애플리케이션 DB에서는 사용자가 요청한 삭제를 실제 row 삭제로 처리합니다.

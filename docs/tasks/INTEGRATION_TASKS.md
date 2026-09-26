@@ -60,6 +60,12 @@
   - **재현 · 해결:** 원격 `health` 프로젝트 SQL Editor로 마이그레이션을 직접 적용하고, 실제 사용자 세션 토큰으로 RPC를 호출해 검증했다. 테스트 계정으로 `create_record_message` → **HTTP 200**(수정 전 403 FORBIDDEN), `retry_daily_summary` → `"not_retryable"` 반환, `confirm_daily_record` → `SUMMARY_NOT_READY`(grant 동작 확인), 타인 `p_user_id` → 403 FORBIDDEN, 스케줄러 RPC → 403 permission denied. 검증 후 테스트 계정과 row는 모두 삭제했다.
   - **문서:** `docs/DATABASE.md` 10절에 RPC별 호출 주체/권한 검증 표를 추가했다. `docs/API.md` 응답 규칙은 변하지 않는다.
 - **추가 발견:** 마이그레이션 적용 과정에서 원격 DB에 B2~B6이 미적용 상태임을 확인해 함께 적용했다(아래 I5 이후 항목 참고).
+- [x] **과거 날짜 신규 작성 정책 결정 반영 (B8).** 사용자가 Contract 기본안대로 "기록이 없는 과거 날짜 신규 작성 불가"를 선택했다.
+  - 마이그레이션 `20260926100000_b8_no_backfill_past_dates.sql`: `create_record_message`가 `systemTimezone` 기준 오늘 날짜에만 daily record를 새로 만들고, 과거 날짜에 record가 없으면 `RECORD_DATE_NOT_WRITABLE`로 거절한다. 이미 존재하는 과거 draft record 추가는 유지된다.
+  - 서버: `mapDatabaseError`에 `RECORD_DATE_NOT_WRITABLE` → 400 + 사용자 안내 문구를 추가했다. DB 오류 원문은 노출하지 않는다.
+  - Contract: `docs/API.md` 5절의 `추가 결정 필요`를 확정 규칙으로 교체, 1절 code 목록에 추가. `docs/DATABASE.md` 10절에 규칙을 명시했다.
+  - 원격 DB 적용 후 실제 사용자 세션으로 3케이스 검증: 오늘 첫 기록 200 / 미기록 과거 날짜 400 `RECORD_DATE_NOT_WRITABLE` / 기존 과거 record 추가 200. 테스트 계정과 row는 정리했다.
+  - UI 영향 없음: 기록 작성 UI는 오늘 페이지에만 있어 과거 날짜에 도달하는 사용자 경로가 없다.
 
 ### I5 이후 남은 Backend 영역 이슈 (Integration이 수정하지 않음)
 
