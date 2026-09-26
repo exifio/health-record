@@ -6,11 +6,12 @@ import { AppShell } from "@/components/layout/AppShell";
 import { useHealthApi } from "@/features/api/api-adapter";
 import { useAuth } from "@/features/auth/auth-context";
 import { useTheme, type Theme } from "@/features/theme/theme-context";
+import { LoginModal } from "@/components/auth/LoginModal";
 
 export function SettingsContent() {
   const api = useHealthApi();
   const router = useRouter();
-  const { status, logout } = useAuth();
+  const { status, logout, isLoginModalOpen, openLoginModal, closeLoginModal, loginWithGoogle, enterDemoMode } = useAuth();
   const isAuthenticated = status === "authenticated";
 
   const handleLogout = async () => {
@@ -165,11 +166,35 @@ export function SettingsContent() {
         ) : (
           <section className="settings-section" data-testid="account-session-section">
             <h3 className="settings-section-title">계정</h3>
-            <p className="settings-section-desc" data-testid="account-session-empty">
-              현재 로그인한 계정이 없습니다. 로그인하면 이 자리에서 로그아웃할 수 있습니다.
-            </p>
+            <div className="danger-actions-list">
+              <div className="danger-action-row">
+                <div className="danger-action-info">
+                  <h4 className="danger-action-name">로그인</h4>
+                  <p className="danger-action-desc">
+                    로그인하면 이 자리에서 계정 확인과 로그아웃을 할 수 있습니다.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={openLoginModal}
+                  data-testid="login-btn"
+                >
+                  로그인
+                </button>
+              </div>
+            </div>
           </section>
         )}
+
+      {/* 홈 화면에서만 로그인 모달을 그리므로, 설정에서 여는 경우에도 같은 흐름을 쓴다. */}
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={closeLoginModal}
+        onGoogleLogin={loginWithGoogle}
+        onExplore={enterDemoMode}
+        dismissible={true}
+      />
 
         {/* F-702 & F-703: Dangerous Data Deletion Actions */}
         <section className="settings-section settings-section--danger" data-testid="danger-settings-section">
