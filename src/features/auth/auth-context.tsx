@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from "react";
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getDefaultHealthApi } from "@/features/api/api-adapter";
 
@@ -55,12 +55,14 @@ export function AuthProvider({
   const router = useRouter();
   // 서버가 세션과 온보딩 상태까지 확인해 초기값을 넘겨준다.
   const [isReady, setIsReady] = useState(initialStatus === "unauthenticated");
-  const hasCheckedOnboarding = useRef(initialStatus === "unauthenticated");
 
   // F-108 / I-104: 온보딩 여부를 서버 프로필 값으로 확인한다.
+  // StrictMode는 개발에서 effect를 두 번 실행한다. 한 번만 수행하는 ref 가드를 두면
+  // 첫 실행의 결과가 cleanup으로 버려지고 두 번째 실행은 조기 반환되어
+  // isReady가 영영 true가 되지 않아 온보딩 안내가 뜨지 않는다.
+  // 조회는 멱등 GET이므로 effect를 그대로 두 번 실행해도 안전하다.
   useEffect(() => {
-    if (initialStatus !== "authenticated" || hasCheckedOnboarding.current) return;
-    hasCheckedOnboarding.current = true;
+    if (initialStatus !== "authenticated") return;
 
     let ignore = false;
     getDefaultHealthApi()

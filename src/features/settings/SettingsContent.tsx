@@ -16,6 +16,7 @@ export function SettingsContent() {
   const [showDeleteDataModal, setShowDeleteDataModal] = useState(false);
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const handleDeleteAllHealthData = async () => {
@@ -28,6 +29,16 @@ export function SettingsContent() {
       setMessage("건강 기록 삭제에 실패했습니다.");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await logout();
+      router.push("/");
+    } finally {
+      setIsLoggingOut(false);
     }
   };
 
@@ -108,6 +119,30 @@ export function SettingsContent() {
             <p className="policy-info-text">
               • 작성하신 건강 정보는 철저히 사용자 본인 계정에만 격리 보관됩니다.
             </p>
+          </div>
+        </section>
+
+        {/* 계정 종료: 공용 기기에서 다른 사람이 내 계정으로 들어오지 못하도록 반드시 제공되어야 한다. */}
+        <section className="settings-section" data-testid="account-session-section">
+          <h3 className="settings-section-title">계정</h3>
+          <div className="danger-actions-list">
+            <div className="danger-action-row">
+              <div className="danger-action-info">
+                <h4 className="danger-action-name">로그아웃</h4>
+                <p className="danger-action-desc">
+                  이 기기에서 로그인만 해제합니다. 기록은 그대로 유지됩니다.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                data-testid="logout-btn"
+              >
+                로그아웃
+              </button>
+            </div>
           </div>
         </section>
 
