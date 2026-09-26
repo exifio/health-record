@@ -3,17 +3,23 @@
   --surface: #ffffff;
   --surface-hover: #f1f5f9;
   --foreground: #0f172a;
-  --muted-foreground: #64748b;
+  /* 13px 보조 텍스트가 surface(#f1f5f9)에서도 4.5:1을 넘도록 한 단계 어둡게 */
+  --muted-foreground: #5b6472;
   --border: #e2e8f0;
   --sidebar-bg: #f9f9f9;
   --sidebar-hover: rgba(0, 0, 0, 0.05);
   --sidebar-border: #e5e7eb;
-  --primary: #0284c7;
-  --primary-hover: #0369a1;
+  /* 흰 글자(14px/600) 대비 4.5:1 이상을 만족하는 sky-700 */
+  --primary: #0369a1;
+  --primary-hover: #075985;
   --primary-foreground: #ffffff;
-  --danger: #ef4444;
-  --danger-hover: #dc2626;
+  /* 배경 위 텍스트/아이콘용. 흰 배경에서 4.5:1 이상을 만족하도록 red-600을 사용한다. */
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
   --danger-foreground: #ffffff;
+  /* solid 버튼 배경 전용. --danger는 다크 테마에서 텍스트용으로 밝아지므로 그대로 쓰면 대비가 깨진다. */
+  --danger-solid: #dc2626;
+  --danger-solid-hover: #b91c1c;
   --warning: #f59e0b;
   --warning-foreground: #78350f;
   --success: #10b981;
@@ -45,11 +51,15 @@
   --sidebar-hover: rgba(255, 255, 255, 0.08);
   --sidebar-border: #2a2a2a;
   --primary: #38bdf8;
-  --primary-hover: #0284c7;
+  /* 다크에서는 hover를 더 밝게 가야 어두운 글자와 4.5:1을 유지한다. */
+  --primary-hover: #0ea5e9;
   --primary-foreground: #0f172a;
   --danger: #f87171;
   --danger-hover: #ef4444;
   --danger-foreground: #ffffff;
+  /* solid 버튼 배경은 테마와 무관하게 흰 글자와 대비되는 어두운 빨강을 유지한다. */
+  --danger-solid: #dc2626;
+  --danger-solid-hover: #b91c1c;
   --warning: #fbbf24;
   --warning-foreground: #78350f;
   --success: #34d399;
@@ -78,11 +88,15 @@
     --sidebar-hover: rgba(255, 255, 255, 0.08);
     --sidebar-border: #2a2a2a;
     --primary: #38bdf8;
-    --primary-hover: #0284c7;
+    /* 다크에서는 hover를 더 밝게 가야 어두운 글자와 4.5:1을 유지한다. */
+    --primary-hover: #0ea5e9;
     --primary-foreground: #0f172a;
     --danger: #f87171;
     --danger-hover: #ef4444;
     --danger-foreground: #ffffff;
+    /* solid 버튼 배경은 테마와 무관하게 흰 글자와 대비되는 어두운 빨강을 유지한다. */
+    --danger-solid: #dc2626;
+    --danger-solid-hover: #b91c1c;
     --warning: #fbbf24;
     --warning-foreground: #78350f;
     --success: #34d399;
@@ -1105,7 +1119,7 @@ body {
   cursor: not-allowed;
 }
 .btn-danger {
-  background-color: var(--danger);
+  background-color: var(--danger-solid);
   color: var(--danger-foreground);
   cursor: pointer;
   border: none;
@@ -2110,7 +2124,7 @@ body {
 }
 
 .btn-danger {
-  background-color: var(--danger);
+  background-color: var(--danger-solid);
   color: var(--danger-foreground);
   border: none;
   border-radius: 6px;
@@ -2122,7 +2136,7 @@ body {
 }
 
 .btn-danger:hover {
-  background-color: var(--danger-hover);
+  background-color: var(--danger-solid-hover);
 }
 
 .danger-modal-overlay {
