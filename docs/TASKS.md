@@ -68,8 +68,8 @@
 | 공통 기반 | 완료 | 이 문서의 `0. 공통 선행 작업` |
 | 프론트엔드 | 완료 | `docs/tasks/FRONTEND_TASKS.md` |
 | 백엔드 | 완료 (B-613 이월) | `docs/tasks/BACKEND_TASKS.md` |
-| 통합 | 완료 (I0~I6, I7-I-715) | `docs/tasks/INTEGRATION_TASKS.md` |
-| 최종 QA / 배포 | 진행 중 (I-716 미완료 · I-717 막힘) | `docs/tasks/INTEGRATION_TASKS.md` |
+| 통합 | 진행 중 (I-714~I-717 게이트) | `docs/tasks/INTEGRATION_TASKS.md` |
+| 최종 QA / 배포 | 진행 중 (승인·Production 배포·429 실측 대기) | `docs/tasks/INTEGRATION_TASKS.md` |
 
 상태는 각 상세 TASK 문서의 실제 진행 상황에 맞춰 갱신합니다.
 
@@ -107,13 +107,14 @@
   - 마이그레이션 `20260926100000_b8_no_backfill_past_dates.sql`, 오류 코드 `RECORD_DATE_NOT_WRITABLE`(400), 원격 DB 적용 및 실제 사용자 세션으로 3개 케이스(오늘 생성 200 / 미기록 과거 400 / 기존 과거 추가 200) 검증 완료.
 - [!] 공개 전 개인정보 / AI 처리 안내 최종 문구 — **결정(2026-09-26): 구현 작업이 모두 끝난 뒤 최종 확인한다. 확인 시점은 I7(최종 QA) 이후 공개 직전이며, 대상은 `src/components/settings`의 안내 UI와 PRD 9.x 대조다.**
   - **상태 갱신(2026-09-27):** 결락 고지 2건(외부 AI 처리자로 기록이 전송된다는 사실, 삭제 후 백업 보존)은 `SettingsContent.tsx`에 반영됐고 `tests/components/privacy-notice.test.ts`가 고정한다. 코드 작업은 끝났다.
-  - 남은 것은 사람(사용자)이다: ① 고지 문구 최종 승인 ② 실제 백업 보존 기간 확인 후 숫자 반영 ③ PRD 9-3 **동의 방식 결정과 동의 화면 구현**(첫 로그인 동의 화면 / 약관 페이지). ③은 AGENTS §3 범위 확장 금지와 충돌하므로 임의 구현하지 않는다.
+  - 남은 것은 사람(사용자)이다: ① 고지 문구 최종 승인 ② 선택한 Supabase Free에 맞는 별도 백업·복구 방식을 정하고 실제 보존 기간 확인 ③ PRD 9-3 **동의 방식 결정과 동의 화면 구현**(첫 로그인 동의 화면 / 약관 페이지). ③은 AGENTS §3 범위 확장 금지와 충돌하므로 결정 전 임의 구현하지 않는다.
+  - **사용자 결정(2026-09-27): Supabase Free를 유지한다.** Free에는 보장된/다운로드 가능한 일일 백업이 포함되지 않지만, Supabase는 현재 Free 프로젝트에 최대 7개의 일일 백업이 생성돼 업그레이드 후 제공될 수 있다고 별도 FAQ에 안내한다. 해당 프로젝트 백업의 존재·보존 기간은 확인하지 않았으므로, 별도 백업·복구 방식을 마련하고 실제 보존 기간을 확인하기 전까지 고지에 숫자를 넣지 않는다([백업 안내](https://supabase.com/docs/guides/platform/backups), [FAQ](https://supabase.com/docs/guides/troubleshooting/will-backups-be-accessible-from-the-dashboard-immediately-after-upgrading-to-a-paid-plan-hXY4rs)). email 및 Google Auth가 켜져 있고 유출 비밀번호 보호는 꺼져 있다. 해당 설정은 현재 Free 플랜에서 사용할 수 없어 공개 전 인증 제공자 설정을 확인한다([공식 문서](https://supabase.com/docs/guides/auth/password-security)).
 - [x] ~~운영 오류 모니터링 / Analytics 도구~~ → **결정(2026-09-26): MVP에서 도입하지 않는다.**
   - 현재 의존성·SDK가 없고, 코드 로깅은 실패 단계 코드 1곳뿐이며 본문 전송이 없다. 공개 전까지 외부 도구를 붙이지 않으면 안전하게 닫힌다.
   - 나중에 도입할 때의 조건은 `docs/SECURITY.md` 6절(허용/금지 로그 항목, request body 자동 수집 차단)에 이미 적혀 있다.
 - [x] ~~B-613 Vercel rate limit~~ → **결정(2026-09-26): Vercel Firewall로 적용하고, 규칙은 문서로 확정.**
   - 경로별 목표 한도·429 정책·검증 순서를 `docs/SECURITY.md` 10절에 확정했다. 앱 코드에는 넣지 않는다.
-  - 실제 WAF 규칙 적용과 429 검증은 배포 시점에 남긴다(`docs/tasks/INTEGRATION_TASKS.md` I-717).
+  - **실계정 갱신(2026-09-27):** 경로별 WAF 규칙 12개를 Production Firewall에 게시했다. 실제 429 상태·본문 검증은 배포 후 I-717에 남아 있다.
 - [x] ~~DB 함수의 `auth.uid()` 검증과 서버의 service role 호출 경로 불일치~~ → Integration I0에서 해결(세션 클라이언트 전환 + B7 마이그레이션 적용 + 원격 실사용자 검증). 상세는 `docs/tasks/INTEGRATION_TASKS.md`.
 - [x] ~~원격 DB에 B2~B6 마이그레이션 미적용~~ → Integration I0에서 SQL Editor로 B2~B7 적용 및 검증 완료.
 - [x] ~~레거시 테이블(`conversations`/`messages`/`daily_health_records`) 관련 보안 advisor 경고~~ → **2026-09-27 실측: 세 테이블 모두 원격 `health` 프로젝트에 존재하지 않는다**(`PGRST205`). 마이그레이션에도 생성 코드가 없어 drop 마이그레이션은 불필요하다. 배포 전 Dashboard → Advisors로 실제 경고 항목을 재확인한다.

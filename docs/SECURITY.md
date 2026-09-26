@@ -112,8 +112,8 @@ MVP에서도 다음은 abuse 방지를 위해 기본 제한을 고려합니다.
 - **엣지에서 Vercel Firewall(WAF)으로 적용합니다.** 앱 코드에 rate limit 로직을 넣지 않습니다.
   - 서버리스 인스턴스는 요청마다 새로 올라가므로 IP별 카운트를 앱 메모리나 파일로 유지할 수 없습니다.
   - Vercel Pro 플랜이라 WAF 사용 요건은 충족됩니다(계정 `exifio-4593s-projects`, plan `pro`).
-- **적용 시점은 배포 시점입니다.** health-record 프로젝트가 아직 Vercel에 없으므로, WAF 규칙은
-  배포(I-715)와 함께 붙입니다. 그전까지는 코드 레벨 제한이 없다는 사실을 감수합니다.
+- **적용 상태(2026-09-27):** Vercel `exifio-4593s-projects/health-record` 프로젝트에 경로·HTTP method별 규칙 12개를 게시했다. Firewall 설정은 배포 없이 즉시 반영되므로, 배포된 경로가 생기면 바로 적용된다. 실제 429 결과는 I-717에서 배포 후 확인한다.
+- **한도 범위:** Vercel은 rate limit counter를 region별로 집계한다. 여러 region으로 요청이 분산되면 한 region에 설정한 수보다 전체 허용량이 커질 수 있으므로, 전역 quota로 취급하지 않는다.
 - **사용자별 전역 quota가 필요하면 별도 공유 저장소가 필요합니다.** MVP 범위 밖입니다(AGENTS §3).
 
 ### 경로별 목표 한도
@@ -129,11 +129,11 @@ MVP에서도 다음은 abuse 방지를 위해 기본 제한을 고려합니다.
 | 요약 수정 | `PATCH .../summary` | IP | 30 회/분 | 편집 중 저장 반복 허용 |
 | 확정/정정 | `POST .../confirm`, `POST .../corrections` | IP | 20 회/분 | 저빈도 |
 | 조회 | `GET /api/daily-records*`, `/api/visit-prep`, `/api/profile` | IP | 120 회/분 | 새로고침·탐색 허용 |
-| 내부 스케줄러 | `POST /api/internal/daily-summary/run` | IP | 4 회/분 | 시간당 1회 실행 기준의 여유 |
+| 내부 스케줄러 | `GET`/`POST /api/internal/daily-summary/run` | IP | 4 회/분 | Vercel Cron의 GET과 수동 POST 모두 제한 |
 
 ### 초과 시 응답
 
-- WAF가 `429`를 반환합니다. 응답 본문은 비워 둡니다(health 정보가 담길 수 있는 본문을 엣지에서 만들지 않음).
+- WAF가 `429`를 반환해야 합니다. 빈 응답 본문은 배포 후 실제 경로에서 확인한다. 확인 전에는 Vercel의 기본 429 본문이 비어 있다고 간주하지 않는다.
 - 앱 코드에 `RATE_LIMITED` 오류 코드는 두지 않습니다. 429는 엣지에서만 발생하므로
   `docs/API.md`의 error code 목록에 추가하지 않습니다.
 - 프론트엔드는 429를 일반 저장 실패로 표시합니다. 원인을 사용자에게 설명하지 않습니다.
@@ -179,4 +179,3 @@ health data → profile → auth account 순서.
 - 개인정보 처리방침과 AI 처리 안내 문구
 
 이 항목은 법률 자문을 대체하지 않습니다.
-
