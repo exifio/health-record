@@ -107,6 +107,44 @@ MVP에서도 다음은 abuse 방지를 위해 기본 제한을 고려합니다.
 
 정확한 수치는 트래픽/배포 환경에 맞춰 정합니다.
 
+### 적용 방식 (2026-09-26 결정, B-613)
+
+- **엣지에서 Vercel Firewall(WAF)으로 적용합니다.** 앱 코드에 rate limit 로직을 넣지 않습니다.
+  - 서버리스 인스턴스는 요청마다 새로 올라가므로 IP별 카운트를 앱 메모리나 파일로 유지할 수 없습니다.
+  - Vercel Pro 플랜이라 WAF 사용 요건은 충족됩니다(계정 `exifio-4593s-projects`, plan `pro`).
+- **적용 시점은 배포 시점입니다.** health-record 프로젝트가 아직 Vercel에 없으므로, WAF 규칙은
+  배포(I-715)와 함께 붙입니다. 그전까지는 코드 레벨 제한이 없다는 사실을 감수합니다.
+- **사용자별 전역 quota가 필요하면 별도 공유 저장소가 필요합니다.** MVP 범위 밖입니다(AGENTS §3).
+
+### 경로별 목표 한도
+
+한도는 "정상 사용에서 절대 넘지 않을 값"을 기준으로 잡고, 실제 값은 배포 후 트래픽 관찰에서 조정합니다.
+
+| 대상 | 경로 | 방법 | 목표 한도 | 근거 |
+|---|---|---|---|---|
+| 메시지 write | `POST /api/daily-records/:date/messages` | IP | 20 회/분 | 하루에 몇십 개 쓰는 사용자도 잘리지 않도록 여유 |
+| 메시지 수정/삭제 | `PATCH`/`DELETE .../messages/:messageId` | IP | 30 회/분 | write보다 자주 발생 |
+| AI suggestion | `POST .../suggestions` | IP | 5 회/분 | OpenAI 호출이므로 가장 보수적으로 |
+| 요약 재시도 | `POST .../summary/retry` | IP | 5 회/분 | 사용자가 반복 클릭해도 AI 비용이 늘지 않도록 |
+| 요약 수정 | `PATCH .../summary` | IP | 30 회/분 | 편집 중 저장 반복 허용 |
+| 확정/정정 | `POST .../confirm`, `POST .../corrections` | IP | 20 회/분 | 저빈도 |
+| 조회 | `GET /api/daily-records*`, `/api/visit-prep`, `/api/profile` | IP | 120 회/분 | 새로고침·탐색 허용 |
+| 내부 스케줄러 | `POST /api/internal/daily-summary/run` | IP | 4 회/분 | 시간당 1회 실행 기준의 여유 |
+
+### 초과 시 응답
+
+- WAF가 `429`를 반환합니다. 응답 본문은 비워 둡니다(health 정보가 담길 수 있는 본문을 엣지에서 만들지 않음).
+- 앱 코드에 `RATE_LIMITED` 오류 코드는 두지 않습니다. 429는 엣지에서만 발생하므로
+  `docs/API.md`의 error code 목록에 추가하지 않습니다.
+- 프론트엔드는 429를 일반 저장 실패로 표시합니다. 원인을 사용자에게 설명하지 않습니다.
+
+### 배포 시 검증 순서 (I7)
+
+1. 각 경로에 대해 허용 한도 이하 반복 호출이 전부 성공하는지 확인
+2. 한도를 초과해 호출해 429가 오는지 확인
+3. 429 응답 본문에 health 정보가 없는지 확인
+4. 위 4개 AI/write 경로의 Vercel 로그에 정상 트래픽 기준치를 확인하고 한도를 조정
+
 ## 11. Internal Scheduler Endpoint
 
 - 공개 secret 없이 호출 가능하게 만들지 않음

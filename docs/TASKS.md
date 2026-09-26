@@ -106,9 +106,12 @@
   - 오늘 날짜의 첫 기록과 이미 존재하는 과거 draft record에 대한 추가는 그대로 허용합니다. 확정된 과거 기록에 남기는 정정은 12절 경로를 씁니다.
   - 마이그레이션 `20260926100000_b8_no_backfill_past_dates.sql`, 오류 코드 `RECORD_DATE_NOT_WRITABLE`(400), 원격 DB 적용 및 실제 사용자 세션으로 3개 케이스(오늘 생성 200 / 미기록 과거 400 / 기존 과거 추가 200) 검증 완료.
 - [!] 공개 전 개인정보 / AI 처리 안내 최종 문구 — **결정(2026-09-26): 구현 작업이 모두 끝난 뒤 최종 확인한다.** 기능 개발 중에는 문구를 확정하지 않는다. 확인 시점은 I7(최종 QA) 이후 공개 직전이며, 대상은 `src/components/settings`의 안내 UI와 PRD 9.x 대조다.
-- [!] 운영 오류 모니터링 / Analytics 도구를 사용할 경우 건강 원문 제거 설정
-  - 현재 상태: MVP에서 외부 모니터링/Analytics 도구를 도입하지 않고 있습니다(B6 확인). 도입 시 건강 원문·message id·요약 본문을 전송하지 않는 것을 기본 조건으로 둡니다.
-- [!] B-613 Vercel rate limit — Pro 플랜은 확인됐고, 프로젝트 생성/배포가 남았습니다. 배포는 제품 공개 결정이므로 승인이 필요합니다. (`docs/tasks/BACKEND_TASKS.md` 참고)
+- [x] ~~운영 오류 모니터링 / Analytics 도구~~ → **결정(2026-09-26): MVP에서 도입하지 않는다.**
+  - 현재 의존성·SDK가 없고, 코드 로깅은 실패 단계 코드 1곳뿐이며 본문 전송이 없다. 공개 전까지 외부 도구를 붙이지 않으면 안전하게 닫힌다.
+  - 나중에 도입할 때의 조건은 `docs/SECURITY.md` 6절(허용/금지 로그 항목, request body 자동 수집 차단)에 이미 적혀 있다.
+- [x] ~~B-613 Vercel rate limit~~ → **결정(2026-09-26): Vercel Firewall로 적용하고, 규칙은 문서로 확정.**
+  - 경로별 목표 한도·429 정책·검증 순서를 `docs/SECURITY.md` 10절에 확정했다. 앱 코드에는 넣지 않는다.
+  - 실제 WAF 규칙 적용과 429 검증은 배포 시점에 남긴다(`docs/tasks/INTEGRATION_TASKS.md` I-717).
 - [x] ~~DB 함수의 `auth.uid()` 검증과 서버의 service role 호출 경로 불일치~~ → Integration I0에서 해결(세션 클라이언트 전환 + B7 마이그레이션 적용 + 원격 실사용자 검증). 상세는 `docs/tasks/INTEGRATION_TASKS.md`.
 - [x] ~~원격 DB에 B2~B6 마이그레이션 미적용~~ → Integration I0에서 SQL Editor로 B2~B7 적용 및 검증 완료.
 

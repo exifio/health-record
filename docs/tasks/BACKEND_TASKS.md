@@ -197,7 +197,7 @@ Frontend UI와 `src/contracts/**`는 임의로 수정하지 않습니다.
 - [x] **B-610** 건강 원문 로그 노출 여부 점검
 - [x] **B-611** 오류 모니터링 Health Text 제거 전략 적용
 - [x] **B-612** Scheduler Secret 적용
-- [!] **B-613** 최소 Rate Limit 적용 여부 결정 및 구현
+- [x] **B-613** 최소 Rate Limit 적용 방식 결정 및 규칙 정의 (실제 적용은 배포 시)
 - [x] **B-614** 파괴적 작업 Transaction / 실패 복구 테스트
 
 ### B6 진행 기록
@@ -209,9 +209,11 @@ Frontend UI와 `src/contracts/**`는 임의로 수정하지 않습니다.
 
 ### 추가 결정 필요
 
-- [!] **B-613** Vercel Pro Firewall rate limit으로 최소 보호를 적용하는 방향은 유효하다. Integration이 계정 상태를 확인한 결과 `exifio-4593s-projects`(plan `pro`)에 로그인되어 있어 Firewall 사용 요건은 충족된다. 남은 유일한 막힘은 **health-record 프로젝트가 아직 생성/연결되지 않았다**는 점이다.
-  - 대안 두 가지: (1) Vercel 프로젝트를 만들어 배포한 뒤 WAF rate limit 규칙을 건다(배포 자체가 제품 공개 결정이므로 사용자 승인 필요), (2) 배포를 미루고 규칙 정의를 문서로만 남겨 배포 시점에 적용한다.
-  - 적용 대상 우선순위: 메시지 write > AI suggestion > summary retry > internal endpoint. 사용자별 전역 quota가 필요하면 별도 공유 counter가 필요하다.
+- [x] **B-613 결정 완료(2026-09-26).** **방향: Vercel Pro Firewall(WAF) rate limit, 규칙은 문서로 확정하고 배포 시점에 적용.**
+  - 계정 확인: `exifio-4593s-projects`(plan `pro`)에 로그인되어 있어 Firewall 사용 요건 충족. health-record 프로젝트는 아직 없어 규칙 적용은 배포(I-715)와 함께 한다.
+  - 앱 코드에 rate limit 로직은 넣지 않는다. 서버리스 인스턴스가 요청마다 새로 올라가 IP별 카운트를 유지할 수 없고, 구현하려면 외부 저장소 의존성이 필요해 MVP 범위(AGENTS §3)를 벗어난다.
+  - 경로별 목표 한도, 초과 시 429 정책, 검증 순서를 `docs/SECURITY.md` 10절에 확정했다.
+  - 남는 일: WAF 규칙 생성·적용과 429 검증은 Integration I7(배포 시)로 넘어간다.
 
 ### Integration 실측 기록 (I0, 2026-09-26)
 
