@@ -61,10 +61,13 @@ function routeSource(method: string, apiPath: string): string {
 function documentedEndpoints(): { method: string; path: string }[] {
   const api = fs.readFileSync(path.join(ROOT, "docs", "API.md"), "utf8");
   const endpoints: { method: string; path: string }[] = [];
-  const pattern = /^### (GET|POST|PATCH|DELETE) `(\/api\/[^`]+)`\s*$/gm;
+  // 한 줄에 여러 메서드를 나열할 수 있다(예: "### GET · POST `/api/internal/...`").
+  const pattern = /^### ((?:GET|POST|PATCH|DELETE)(?: · (?:GET|POST|PATCH|DELETE))*) `(\/api\/[^`]+)`\s*$/gm;
 
   for (const match of api.matchAll(pattern)) {
-    endpoints.push({ method: match[1], path: match[2].split("?")[0] });
+    for (const method of match[1].split(" · ")) {
+      endpoints.push({ method, path: match[2].split("?")[0] });
+    }
   }
 
   return endpoints;

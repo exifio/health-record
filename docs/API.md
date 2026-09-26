@@ -398,10 +398,13 @@ Response 200은 GET `/api/profile`과 같은 shape입니다. MVP에서는 온보
 
 ## 18. 내부 Scheduler API
 
-### POST `/api/internal/daily-summary/run`
+### GET · POST `/api/internal/daily-summary/run`
 
 - 일반 사용자 호출 금지
 - `CRON_SECRET` 등 서버 간 인증
+- `Authorization: Bearer <CRON_SECRET>`가 없으면 403, `CRON_SECRET` 미설정 시 500(fail closed)
+- **GET**: Vercel Cron Jobs가 사용하는 메서드. 프로젝트에 `CRON_SECRET`이 설정돼 있으면 Vercel이 헤더를 자동 부착한다. `vercel.json`의 `crons`가 매시(`0 * * * *`) 이 경로를 호출한다.
+- **POST**: 수동 확인용. GET과 동일한 처리와 응답을 반환한다.
 - 대상 record batch 처리
 - raw health text를 response에 포함하지 않음
 
