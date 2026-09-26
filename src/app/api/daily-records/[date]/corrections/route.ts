@@ -1,5 +1,5 @@
 import { CreateCorrectionRequestSchema } from "@/contracts";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createServerClient } from "@/lib/supabase/server";
 import { requireUser } from "@/server/auth/require-user";
 import { createCorrection } from "@/server/daily-records/daily-record-service";
 import { errorResponse } from "@/server/errors/app-error";
@@ -13,7 +13,7 @@ export async function POST(
     const user = await requireUser();
     const { date } = await params;
     const body = parseJson(CreateCorrectionRequestSchema, await request.text());
-    const result = await createCorrection(createAdminClient(), user.id, {
+    const result = await createCorrection(await createServerClient(), user.id, {
       date,
       body,
     });

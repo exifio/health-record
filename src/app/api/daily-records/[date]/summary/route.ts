@@ -1,5 +1,5 @@
 import { UpdateSummaryRequestSchema } from "@/contracts";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createServerClient } from "@/lib/supabase/server";
 import { requireUser } from "@/server/auth/require-user";
 import { updateDailySummary } from "@/server/daily-records/daily-record-service";
 import { errorResponse } from "@/server/errors/app-error";
@@ -13,7 +13,7 @@ export async function PATCH(
     const user = await requireUser();
     const { date } = await params;
     const body = parseJson(UpdateSummaryRequestSchema, await request.text());
-    const summary = await updateDailySummary(createAdminClient(), user.id, {
+    const summary = await updateDailySummary(await createServerClient(), user.id, {
       date,
       body,
     });

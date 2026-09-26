@@ -1,8 +1,8 @@
-const createAdminClientMock = jest.fn();
+const createRetryServerClientMock = jest.fn();
 const requireUserMock = jest.fn();
 const retryDailySummaryMock = jest.fn();
 
-jest.mock("@/lib/supabase/admin", () => ({ createAdminClient: createAdminClientMock }));
+jest.mock("@/lib/supabase/server", () => ({ createServerClient: createRetryServerClientMock }));
 jest.mock("@/server/auth/require-user", () => ({ requireUser: requireUserMock }));
 jest.mock("@/server/daily-records/summary-service", () => ({ retryDailySummary: retryDailySummaryMock }));
 
@@ -20,7 +20,7 @@ function callRoute() {
 describe("POST /api/daily-records/:date/summary/retry", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    createAdminClientMock.mockReturnValue({});
+    createRetryServerClientMock.mockResolvedValue({});
     requireUserMock.mockResolvedValue({ id: USER });
     retryDailySummaryMock.mockResolvedValue({ summaryStatus: "pending" });
   });

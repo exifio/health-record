@@ -5,13 +5,13 @@ import {
 } from "@/contracts";
 import { AppError } from "@/server/errors/app-error";
 
-const createAdminClientMock = jest.fn();
+const createServerClientMock = jest.fn();
 const requireUserMock = jest.fn();
 const updateDailySummaryMock = jest.fn();
 const confirmDailyRecordMock = jest.fn();
 const createCorrectionMock = jest.fn();
 
-jest.mock("@/lib/supabase/admin", () => ({ createAdminClient: createAdminClientMock }));
+jest.mock("@/lib/supabase/server", () => ({ createServerClient: createServerClientMock }));
 jest.mock("@/server/auth/require-user", () => ({ requireUser: requireUserMock }));
 jest.mock("@/server/daily-records/daily-record-service", () => ({
   updateDailySummary: updateDailySummaryMock,
@@ -31,7 +31,7 @@ describe("B4 daily record endpoints", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     requireUserMock.mockResolvedValue({ id: USER });
-    createAdminClientMock.mockReturnValue({});
+    createServerClientMock.mockResolvedValue({});
     updateDailySummaryMock.mockResolvedValue({
       summary: {
         sourceRevision: 1,
@@ -72,7 +72,7 @@ describe("B4 daily record endpoints", () => {
     expect(updateDailySummaryMock).toHaveBeenCalledWith(expect.anything(), USER, { date: DATE, body: SUMMARY });
   });
 
-  it("PATCH rejects uncontracted user_id input before creating a service-role client", async () => {
+  it("PATCH rejects uncontracted user_id input before creating a Supabase client", async () => {
     const { PATCH } = await import("@/app/api/daily-records/[date]/summary/route");
     const response = await PATCH(new Request(`https://health.example/api/daily-records/${DATE}/summary`, {
       method: "PATCH",
@@ -80,7 +80,7 @@ describe("B4 daily record endpoints", () => {
     }), { params: Promise.resolve({ date: DATE }) });
 
     expect(response.status).toBe(400);
-    expect(createAdminClientMock).not.toHaveBeenCalled();
+    expect(createServerClientMock).not.toHaveBeenCalled();
     expect(updateDailySummaryMock).not.toHaveBeenCalled();
   });
 
@@ -119,7 +119,7 @@ describe("B4 daily record endpoints", () => {
     });
   });
 
-  it("세션 인증 실패면 service role client나 mutation service를 호출하지 않는다", async () => {
+  it("세션 인증 실패면 DB client나 mutation service를 호출하지 않는다", async () => {
     requireUserMock.mockRejectedValueOnce(new AppError("UNAUTHENTICATED", "로그인이 필요합니다.", 401));
     const { POST } = await import("@/app/api/daily-records/[date]/confirm/route");
     const response = await POST(new Request(`https://health.example/api/daily-records/${DATE}/confirm`, {
@@ -127,7 +127,7 @@ describe("B4 daily record endpoints", () => {
     }), { params: Promise.resolve({ date: DATE }) });
 
     expect(response.status).toBe(401);
-    expect(createAdminClientMock).not.toHaveBeenCalled();
+    expect(createServerClientMock).not.toHaveBeenCalled();
     expect(confirmDailyRecordMock).not.toHaveBeenCalled();
   });
 });

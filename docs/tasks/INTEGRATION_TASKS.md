@@ -48,24 +48,31 @@
 - **정합 보완:** 1절 error code 목록에 실제로 쓰이는 `MESSAGE_NOT_FOUND`, `RECORD_NOT_CONFIRMED`와 이번에 추가한 `SUMMARY_NOT_RETRYABLE`을 반영했다. 9절에 상태별 허용/거절 규칙과 idempotency, 스케줄러 연동 설명을 보완했다.
 - **재발 방지:** `tests/contracts/api-route-mapping.test.ts`를 추가했다. HealthApi 16개 메서드가 기대한 method/path를 호출하는지, 그 경로와 `docs/API.md`에 정의된 모든 endpoint에 실제 route가 있는지, 구현된 route 중 Contract에 없는 것이 없는지를 양방향으로 검증한다. retry route를 임시로 제거하면 2건이 실패하는 것을 확인했다.
 
+### I0에서 발견한 신규 차단 항목 → 해결 (선택지 A 결정)
+
+- [!] → **해결. 결정: (A) RPC 호출을 사용자 세션 클라이언트로 전환**
+  - **원인:** 마이그레이션의 사용자 데이터 RPC 7개는 `auth.uid()`로 권한을 검증하는데, 서버가 `createAdminClient()`(service role key)로 호출하고 있었다. service role JWT에는 `sub`가 없어 `auth.uid()`가 NULL이므로 메시지 추가/수정/삭제, 요약 수정, 확정, 정정 추가, 하루 삭제, 전체 건강 기록 삭제, 계정 삭제가 전부 403 `FORBIDDEN`으로 실패했다.
+  - **실측 근거:** 원격 프로젝트에 service role key로 `POST /rest/v1/rpc/create_record_message` 호출 → `HTTP 403 {"code":"42501","message":"FORBIDDEN"}`. 실패 시 트랜잭션 롤백으로 데이터 미생성.
+  - **코드 변경:** `confirm`, `summary`(PATCH), `corrections`, `summary/retry` route가 `createServerClient()`(세션 클라이언트)를 사용한다. service role은 스케줄러(`api/internal/daily-summary/run`)와 Auth Admin API를 쓰는 `api/account`에만 남았다.
+  - **마이그레이션:** `20260926090000_b7_session_client_rpc.sql`을 추가했다. B4 RPC 3개에 `auth.uid()` 검증을 넣고 `security definer`로 전환(원래는 service role 전용 grant에만 의존), `retry_daily_summary` RPC를 추가하고, 4개 모두 `authenticated`에 execute를 허용했다. 테이블 grant는 열지 않아 RLS + 함수 검증이 함께 적용된다.
+  - **재시도 흐름 변경:** `retryDailySummary()`는 직접 UPDATE 대신 `retry_daily_summary` RPC를 호출한다. 재시도 가능 여부 판정이 DB row lock 안에서 이뤄져 스케줄러 claim과 직렬화된다. 반환값은 `pending` / `missing`(→404) / `not_retryable`(→409).
+  - **재발 방지:** `tests/server/session-client-boundary.test.ts` 추가. (1) 사용자 요청 route가 `@/lib/supabase/admin`을 쓰지 않는지(스케줄러·계정 삭제만 예외), (2) write RPC 4종이 `authenticated` grant + `security definer` + `auth.uid()` 검증 + 고정 `search_path`를 갖는지, (3) 스케줄러 전용 RPC가 여전히 `authenticated`에서 차단되는지, (4) 테이블 직접 grant를 새로 열지 않는지 검증한다.
+  - **문서:** `docs/DATABASE.md` 10절에 RPC별 호출 주체/권한 검증 표를 추가했다. `docs/API.md` 응답 규칙은 변하지 않는다.
+
+### I5 이후 남은 Backend 영역 이슈 (Integration이 수정하지 않음)
+
+- [!] **B7 마이그레이션 원격 적용 필요.** `20260926090000_b7_session_client_rpc.sql`은 아직 원격 `health` 프로젝트에 적용하지 않았다. 이 저장소에는 Supabase CLI link(접근 토큰/DB 비밀번호)가 없다. 적용 전까지 write API는 기존 상태로 동작한다.
+- [!] **일일 요약 job의 완료 카운터가 잘못 집계됨.** `summary-service.ts`의 `complete_daily_summary` 호출이 `Array.isArray(rows) ? rows[0]?.result : null`로 결과를 읽는데, 해당 함수는 `returns text`라 PostgREST가 스칼라 문자열을 돌려준다. 따라서 성공해도 `completed`가 늘지 않고 `failed`로 집계된다. 요약 자체는 DB에 정상 저장되므로 `다시 정리하기` 흐름에는 영향이 없으나, 스케줄러 응답 카운터와 I-305 검증에서 걸린다. `src/server/**`는 Backend 영역이라 `[!]` 로 남긴다.
+
 ### I0 검증 결과
 
 - `npm run typecheck` 통과
 - `npm run lint` 통과
-- `npm test` → 39 suites / 233 tests 통과 (I-005 반영 전 36 suites / 198 tests)
+- `npm test` → 40 suites / 236 tests 통과 (I-005 반영 전 36 suites / 198 tests)
 - `npm run build` 통과, `/api/daily-records/[date]/summary/retry` 라우트 등록 확인. 페이지 6개 전부 Dynamic 렌더링
 - 실브라우저 대신 dev 서버로 확인: 세션 없는 `POST /summary/retry`는 DB 접근 전에 401 `UNAUTHENTICATED`를 반환한다(404/500 아님)
 - 라우트 대조 결과: `docs/API.md`에 정의된 20개 endpoint 전부 구현, Contract에 정의되지 않은 구현 route 없음
-
-### I0에서 발견한 신규 차단 항목 (I2/I3 착수 전 해결 필요)
-
-- [!] **DB 함수의 `auth.uid()` 검증이 서버 호출 경로와 어긋남 (전체 write API 영향)**
-  - `supabase/migrations/**`의 사용자 데이터 RPC 7개(`create_record_message`, `update_record_message`, `delete_record_message`, `update_daily_summary`, `confirm_daily_record`, `create_record_correction`, B6 삭제 3개)는 모두 `if (select auth.uid()) is distinct from p_user_id then raise exception 'FORBIDDEN'`로 시작한다.
-  - 그런데 서버는 이 RPC를 `createAdminClient()`(service role key)로 호출한다. service role JWT에는 `sub`가 없어 `auth.uid()`가 NULL이므로 **무조건 FORBIDDEN**이 된다.
-  - 실측: 원격 프로젝트에 service role key로 `POST /rest/v1/rpc/create_record_message`를 호출해 `HTTP 403 {"code":"42501","message":"FORBIDDEN"}`을 확인했다. 실패 시 트랜잭션이 롤백되어 데이터는 생성되지 않았다.
-  - 영향 범위: 메시지 추가/수정/삭제, 요약 수정, 확정, 정정 추가, 하루 삭제, 전체 건강 기록 삭제, 계정 삭제. 즉 **I2/I3/I4/I6의 실제 API 전환이 전부 실패한다.** 조회는 `user_id` 조건부 select라 정상 동작하며(GET 실브라우저 검증 완료), 스케줄러용 `claim/complete/fail_daily_summary`는 service role 전용이라 정상이다.
-  - 선택지: (A) RPC 호출을 사용자 세션 클라이언트(`createServerClient()`)로 바꿔 `auth.uid()`와 RLS가 실제로 작동하게 한다 — DB 함수를 그대로 활용하므로 가장 권장. (B) `createAdminClient()`에 사용자 access token을 `Authorization` 헤더로 주입한다. (C) DB 함수에서 `auth.uid()` 검증을 제거한다 — 검증이 느슨해져 비권장.
-  - `src/server/**`, `src/app/api/**`, `supabase/migrations/**`는 Backend 담당 영역이므로 Integration이 임의로 수정하지 않고 `[!]` 로 남긴다.
+- service role 사용처가 스케줄러(`api/internal/daily-summary/run`)와 계정 삭제(`api/account`) 두 곳뿐임을 정적 테스트로 확인
 
 Contract 충돌이 있으면 구현 중 한쪽을 임의 기준으로 삼지 않습니다.
 `docs/API.md`와 `src/contracts/**`를 먼저 확정한 뒤 양쪽 코드를 맞춥니다.

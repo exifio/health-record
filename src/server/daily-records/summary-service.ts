@@ -19,8 +19,13 @@ const CLAIMABLE_STATUSES = ["not_due", "pending", "stale", "failed", "processing
 
 const RetryParamsSchema = z.strictObject({ date: LocalDateSchema });
 
-// API.md 9절: failed/stale만 재시도하고 pending은 중복 호출해도 같은 202를 반환한다.
-const RETRYABLE_STATUSES = ["failed", "stale", "pending"];
+// API.md 9절: 재시도 가능 여부 판정은 DB RPC가 row lock 안에서 처리한다.
+// 'pending' 중복 호출도 같은 202를 반환한다.
+const RETRY_RESULTS = {
+  pending: "pending",
+  missing: "missing",
+  not_retryable: "not_retryable",
+} as const;
 
 type DailyRecordCandidate = {
   id: string;
@@ -52,39 +57,22 @@ export async function retryDailySummary(
 ): Promise<RetrySummaryResponse> {
   const { date } = parseObject(RetryParamsSchema, { date: rawDate });
 
-  const { data: record, error: recordError } = await supabase
-    .from("daily_records")
-    .select("id, record_status, summary_status")
-    .eq("user_id", userId)
-    .eq("local_date", date)
-    .maybeSingle();
+  // 세션 클라이언트로 호출해 DB 안의 auth.uid() 검증이 실제로 작동하게 한다.
+  const { data, error } = await supabase.rpc("retry_daily_summary", {
+    p_user_id: userId,
+    p_local_date: date,
+  });
 
-  if (recordError) {
-    throw mapDatabaseError(recordError);
+  if (error) {
+    throw mapDatabaseError(error);
   }
-  if (!record) {
+
+  const result = Array.isArray(data) ? data[0] : data;
+
+  if (result === RETRY_RESULTS.missing) {
     throw new AppError("RECORD_NOT_FOUND", "기록을 찾을 수 없습니다.", 404);
   }
-
-  if (record.record_status === "confirmed" || !RETRYABLE_STATUSES.includes(record.summary_status)) {
-    throw new AppError("SUMMARY_NOT_RETRYABLE", "지금은 다시 정리할 수 없습니다.", 409);
-  }
-
-  // 한 번의 조건부 UPDATE로 pending 재시도를 idempotent하게 처리한다.
-  const { data: updated, error: updateError } = await supabase
-    .from("daily_records")
-    .update({ summary_status: "pending", processing_started_at: null })
-    .eq("id", record.id)
-    .eq("user_id", userId)
-    .in("summary_status", RETRYABLE_STATUSES)
-    .select("id")
-    .maybeSingle();
-
-  if (updateError) {
-    throw mapDatabaseError(updateError);
-  }
-  if (!updated) {
-    // 스케줄러가 먼저 claim한 등 상태가 바뀐 경우에는 재시도 대상이 아니다.
+  if (result !== RETRY_RESULTS.pending) {
     throw new AppError("SUMMARY_NOT_RETRYABLE", "지금은 다시 정리할 수 없습니다.", 409);
   }
 

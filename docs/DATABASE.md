@@ -189,6 +189,25 @@ exists (
 
 summary/suggestions/corrections도 같은 소유권 경로를 사용합니다.
 
+### write RPC 호출 주체
+
+사용자 데이터 write RPC는 **service role이 아니라 사용자 세션 클라이언트**로 호출해야 합니다.
+service role로 호출하면 JWT에 `sub`가 없어 `auth.uid()`가 NULL이 되고, `auth.uid()`로 권한을
+검증하는 RPC는 항상 FORBIDDEN이 됩니다.
+
+| RPC | 호출 주체 | 권한 검증 |
+|---|---|---|
+| `create_record_message`, `update_record_message`, `delete_record_message` | 세션 클라이언트 | `auth.uid()` 대조 |
+| `update_daily_summary`, `confirm_daily_record`, `create_record_correction` | 세션 클라이언트 | `auth.uid()` 대조 |
+| `retry_daily_summary` | 세션 클라이언트 | `auth.uid()` 대조 |
+| `delete_daily_record`, `delete_health_data`, `delete_account_data` | 세션 클라이언트 | `auth.uid()` 기반 |
+| `claim_daily_summary`, `complete_daily_summary`, `fail_daily_summary` | service role (스케줄러) | 서버 간 인증 + record 단위 claim |
+| Supabase Auth 사용자 삭제 | service role (Auth Admin API) | 서버 전용 |
+
+write RPC는 모두 `security definer` + `set search_path = ''`로 선언하고, 함수 안에서만
+테이블을 씁니다. `authenticated`에 테이블 `insert/update/delete` grant를 열지 않으므로
+RLS와 함수 검증이 함께 사용자의 경로가 됩니다.
+
 ## 11. 삭제 정책
 
 애플리케이션 DB에서는 사용자가 요청한 삭제를 실제 row 삭제로 처리합니다.

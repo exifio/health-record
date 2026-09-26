@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createServerClient } from "@/lib/supabase/server";
 import { requireUser } from "@/server/auth/require-user";
 import { confirmDailyRecord } from "@/server/daily-records/daily-record-service";
 import { errorResponse } from "@/server/errors/app-error";
@@ -10,7 +10,7 @@ export async function POST(
   try {
     const user = await requireUser();
     const { date } = await params;
-    const result = await confirmDailyRecord(createAdminClient(), user.id, date);
+    const result = await confirmDailyRecord(await createServerClient(), user.id, date);
 
     return Response.json(result);
   } catch (error) {
