@@ -178,11 +178,47 @@ Contract 충돌이 있으면 구현 중 한쪽을 임의 기준으로 삼지 않
 
 # I4. 요약 확인 / 확정 / 정정 연결
 
-- [ ] **I-401** 사용자 수정 Summary 저장/재조회 검증
-- [ ] **I-402** 확정 API 연결
-- [ ] **I-403** 확정 후 기존 원문 수정/삭제 차단 검증
-- [ ] **I-404** 정정 기록 추가 API 연결
-- [ ] **I-405** 정정 기록 재조회/표시 검증
+- [~] **I-401** 사용자 수정 Summary 저장/재조회 검증
+- [~] **I-402** 확정 API 연결
+- [~] **I-403** 확정 후 기존 원문 수정/삭제 차단 검증
+- [~] **I-404** 정정 기록 추가 API 연결
+- [~] **I-405** 정정 기록 재조회/표시 검증
+
+### I4 인수인계 기록 (2026-09-26, 미완료)
+
+작업 도중에 중단했다. 아래는 working tree에만 있는 미커밋 변경(`git diff` 6개 파일)과 남은 작업이다.
+
+**이미 반영한 코드 (typecheck 통과, 실제 API 대상 검증은 아직 하지 않음)**
+
+- `src/features/records/api/health-api.ts`: `API_ERROR_CODES`에 `SUMMARY_NOT_READY` / `SUMMARY_STALE` / `SUMMARY_NOT_RETRYABLE` 추가. 실제 code 목록은 `docs/API.md` 1절과 `src/server/daily-records/errors.ts`가 기준이고, 두 곳은 이미 일치한다.
+- `src/components/summary/DailySummaryCard.tsx` (I-401/I-402/I-404 안내): 요약 저장·확정·정정·삭제 4개 핸들러의 `catch { }`가 오류를 삼키고 하드코딩 문장만 띄우고 있었다. `actionErrorMessage(err, fallback)`을 추가해 **서버가 준 `error.message`를 우선** 표시하고, payload가 없으면 호출자 fallback으로 떨어지게 했다. HealthApiError의 `message`는 서버의 사용자 안내문과 동일 문장이라 별도 문구 표를 만들지 않았다.
+- `src/features/records/components/RecordDateContent.tsx` (I-403): 확정/오래된 요약 계열 409(`RECORD_CONFIRMED`, `RECORD_NOT_CONFIRMED`, `SUMMARY_STALE`, `SUMMARY_NOT_READY`)를 `CONFLICT_CODES`로 모으고, 발생 시 카드를 언마운트하지 않고 `getDailyRecord`로 상태를 다시 맞아떨어지게 한다(`syncAfterConflict`). 원래는 실패한 fetch를 `setRecord(null)`로 처리해 **확정된 기록이 빈 화면/재시도 화면으로** 보였다.
+- `src/features/records/components/TodayRecordView.tsx` (I-403): 원문 create/update/delete를 `guardConfirmed()`로 감싸 `RECORD_CONFIRMED` 409 때 서버 상태를 다시 읽는다. 원래는 실패 시 `router.refresh()`로 기록 화면 자체를 다시 올려 편집 UI가 사라졌다.
+- `src/mocks/health-api.ts` (Mock↔Backend 규칙 정합): 요약 3개 operation이 실제 RPC(B4/B7)보다 훨씬 관대했다. 거절 순서와 code를 RPC와 맞췄다.
+  - `updateSummary`: RECORD_NOT_FOUND(404) → RECORD_CONFIRMED(409) → SUMMARY_STALE(409) → SUMMARY_NOT_READY(409) → revision 불일치 SUMMARY_STALE(409). 기존에는 revision 확인만 있었다.
+  - `confirmRecord`: 같은 순서에 idempotent 재확정 유지. 기존에는 요약 없이도 확정됐고 `confirmedAt`을 응답마다 새로 만들었다.
+  - `createCorrection`: 미확정 기록 → 409 `RECORD_NOT_CONFIRMED`(기존에는 아무 검사 없음).
+  - 원문 create/delete에도 `ready → stale` 전환을 추가했다(DB 규칙 B1과 동일, updateMessage에만 이미 있었다).
+  - `retrySummary`는 아직 실제와 다르다: 백엔드는 기록 없음 404 `RECORD_NOT_FOUND`, 확정/not_due/ready/processing 상태 409 `SUMMARY_NOT_RETRYABLE`(API.md 6절), pending 중복 202인데 Mock은 무조건 `pending`을 돌려준다. **남은 작업.**
+  - Mock 전용 `runSummaryWorker()`를 `MockHealthApi`에 추가했다(실제 B3 스케줄러 대신 draft+claim 가능 record에 초안을 만들어 ready로 만든다). contract 함수가 아니라 화면 코드는 부르지 않는다.
+  - `deleteHealthData`/`deleteAccount`가 `confirmedAt`을 비우지 않던 것도 고쳤다.
+
+**지금 빨간 테스트 (`npx jest` → 4 failed / 255 passed)**
+
+`tests/mocks/mock-health-api.test.ts` 한 파일에만 있다. 원인은 공통이고, Mock의 default store가 **today fixture 한 개**(2026-09-25, `not_due`, 요약 없음)만 담고 있다는 사실에서 나온다.
+
+- `createMockHealthApi (F-007)`: flow가 `deleteMessage`로 마지막 메시지를 지우면 record가 store에서 사라진다(B-112 실동작과 일치하는 올바른 동작) → 뒤이은 `updateSummary`가 404. flow를 `customStore`로 `sampleUnreviewedRecordResponse`(draft + ready)를 주입해 다시 쓰거나, 마지막 메시지를 지우기 전에 요약 확정을 끝내는 순서로 바꿔야 한다.
+- 새로 추가한 parity 3건: `ready` 상태의 record가 기본 store에 없어 실패한다(실제로는 `not_due`/404가 나온다). `createMockHealthApi({ records })`에 `sampleUnreviewedRecordResponse.record`를 넣은 Map을 주입해 `ready + draft` 상태를 만들고, stale 전이는 그 record에 `createMessage`를 한 뒤 확인하면 된다.
+- 회고: 요약 3종 규칙만 고치면 될 줄 알았는데 Mock fixture/flow가 그 상태를 만들지 못해 범위가 커졌다. 남은 Mock 작업은 I4 필수 조건은 아니고 I-001 정합 범위로, I4 본문 검증(실제 API)과 분리해서 진행하는 편이 낫다.
+
+**남은 I4 본문 작업**
+
+- I-401/I-402/I-404/I-405: 실제 API 모드(`NEXT_PUBLIC_USE_MOCK=false`, 셸 환경 변수 오염은 I2/I3 기록의 `env -u` 함정 참고)로 dev 서버 + 실브라우저 확인 — 요약 수정 저장 후 재조회 유지, 확정 버튼 → `confirmed`, 확정 후 원문 수정/삭제 차단 및 정정만 허용, 정정 추가 후 재조회 표시. fixture는 I5에서 쓴 방식대로 만들고 검증 후 삭제한다.
+- I-403: 위 코드 수정 상태로 실제 409를 재현해 확인해야 한다(다른 탭에서 확정해 두고 원문 수정 시도).
+- Mock 빨간 테스트 4건 정리, 그리고 `retrySummary`의 404/409 규칙 정합.
+- 완료 후 I-401~I-405를 `[x]`로 바꾸고 위 기록을 검증 결과로 교체한다.
+
+Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미수정).
 
 ---
 
@@ -303,6 +339,23 @@ Contract 충돌이 있으면 구현 중 한쪽을 임의 기준으로 삼지 않
   - **PRD 9-3: OpenAI 등 외부 AI 처리자로 건강 기록이 전송되는 사실 고지·동의 방식** — 현재 문구에 전혀 없음. 앱은 실제로 원문을 OpenAI에 보내므로이것은 필수 고지다.
   - **PRD 9-4: 계정 삭제 후 인프라 백업 보존 기간 고지** — 현재 문구에 없음. 보존 기간은 실제 백업 정책 사실이므로 문서만으로는 정할 수 없고 운영 확인이 필요하다.
   - 문구 최종 승인 없이 I-716(배포 준비 완료)은 표시하지 않는다.
+
+#### I-714 검토용 초안 (미승인 · UI에 반영하지 않음)
+
+아래는 검토를 위해 준비한 초안이다. **승인 없이 `SettingsContent.tsx`에 반영하지 않았고**, 사람이 사실 확인을 해야 하는 값은 `확인 필요`로 표시했다.
+
+추가할 고지(1) — 외부 AI 처리자:
+
+> • AI 정리를 위해 작성하신 건강 기록의 **내용이 OpenAI(외부 AI 처리자)로 전송**되어 요약 문장을 생성합니다. 전송되는 범위는 그날 작성한 기록 원문이며, AI는 대화를 하지 않고 기록 정리만 수행합니다. AI 결과는 원본을 바꾸지 않으며, 언제든 기록을 삭제하면 함께 처리됩니다.
+
+추가할 고지(2) — 삭제 후 백업 보존:
+
+> • `전체 건강 기록 삭제`와 `계정 삭제`는 앱 데이터베이스에서 즉시 반영됩니다. 다만 인프라 백업에 보관된 사본의 보존 기간은 **[확인 필요: 실제 백업 정책 기간]**입니다. 보존이 끝난 시점 이후에는 다시 조회할 수 없습니다.
+
+확인이 필요한 사실 3가지:
+1. 실제 백업 보존 기간(Supabase/Vercel 정책 + 운영 설정)
+2. 한국 서비스 대상이라면 국외 이전 고지의 적용 방식(법무 확인)
+3. 동의 방식(첫 로그인 동의 화면 / 별도 약관 페이지 중 택일) — 현재 구현에는 동의 화면이 없다
 - **I-715**: 코드가 읽는 환경변수는 7개다(`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_USE_MOCK`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `CRON_SECRET`). `.env.example`와 일치한다. 배포 시 유의점 3가지:
   1. `NEXT_PUBLIC_USE_MOCK`는 Production에서 반드시 `false`여야 한다(생략하면 Mock으로 동작한다).
   2. 이 로컬 환경은 `OPENAI_BASE_URL`로 8787 포트의 로컬 AI 릴레이를 쓰고 있다. Vercel에는 이 값을 넣지 않으면 기본 `api.openai.com`으로 나간다.
