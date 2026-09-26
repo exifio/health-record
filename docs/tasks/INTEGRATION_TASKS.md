@@ -102,12 +102,18 @@ Contract 충돌이 있으면 구현 중 한쪽을 임의 기준으로 삼지 않
 
 # I1. Merge / 인증 / 앱 기본 연결
 
-- [ ] **I-101** Backend Branch Merge
-- [ ] **I-102** Frontend Branch Merge
-- [ ] **I-103** Merge Conflict 해결
+- [x] **I-101** Backend Branch Merge — 해당 없음 (main에 이미 반영됨)
+- [x] **I-102** Frontend Branch Merge — 해당 없음 (main에 이미 반영됨)
+- [x] **I-103** Merge Conflict 해결 — 해당 없음 (충돌 없음)
 - [x] **I-104** Google 로그인 실제 세션을 App Shell에 연결
 - [x] **I-105** 로그인/로그아웃 상태 전환 검증
 - [x] **I-106** Demo Mode에서 실제 사용자 API 호출 차단 검증
+
+### I1 진행 기록 (2026-09-26)
+
+- **I-101~I-103은 해당 없음으로 마감한다.** FE/BE 전용 브랜치와 worktree를 쓰지 않아 Backend/Frontend 작업이 모두 `main` working tree에만 있었고, I-004 결정(선택지 A)에 따라 통합 스냅샷 커밋 `a01a75f`로 한 번에 기록했다. merge할 대상 브랜치와 충돌이 존재하지 않는다. 원격 remote도 없다.
+- I-104~I-106은 Frontend 단계에서 `[x]`로 완료됐고, I-005에서 원격 DB 상태를 바로잡은 뒤에도 판정 근거는 그대로 유효하다(미인증·Demo 모드는 사용자 API를 호출하지 않는다).
+- I1에서 실질적으로 더 확인할 것은 없다. **실제 API 연결 작업은 I2부터 시작한다.**
 
 ---
 
