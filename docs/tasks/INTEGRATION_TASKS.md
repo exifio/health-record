@@ -22,7 +22,7 @@
 - [x] **I-001** `docs/TASKS.md` 공통 선행 작업 완료 확인
 - [x] **I-002** `FRONTEND_TASKS.md`의 MVP 구현 작업 완료 확인
 - [x] **I-003** `BACKEND_TASKS.md`의 MVP 구현 작업 완료 확인
-- [!] **I-004** Frontend / Backend Branch 최신 commit 확인
+- [x] **I-004** Frontend / Backend Branch 최신 commit 확인
 - [!] **I-005** `docs/API.md`와 `src/contracts/**` 변경 여부 확인
 
 ### I0 진행 기록 (2026-09-26)
@@ -33,12 +33,12 @@
 
 **I-003 — 완료 (B-613 이월).** B-001~B-612와 B-614~B-711이 `[x]`다. B-613(Vercel Firewall rate limit)만 `[!]`로 남아 있고 원인은 Vercel 프로젝트 미연결이다. API/DB 구현 완료에는 영향이 없으므로 I3 진행을 막지 않지만, **배포(I-715/I-716) 전 반드시 마감**해야 한다.
 
-**I-004 — [!] 추가 결정 필요.**
+**I-004 — 완료. (결정: 선택지 A)**
 
-- 저장소에 `main` 단일 브랜치만 있고 FE/BE 전용 브랜치·worktree가 없다. 원격 remote도 없다.
-- FE/BE 작업 전체가 working tree에만 있고 **아직 커밋되지 않았다** (`src/app/api/`, `src/server/`, `src/components/`, `src/features/`, `supabase/migrations/`, `tests/`, `evals/`, `scripts/`).
-- 따라서 I-101/I-102/I-103(Merge)은 "해당 없음"으로 처리하고, 통합 커밋 방식을 결정해야 한다.
-- 커밋 대상 정리 필요: `.playwright-cli/`(브라우저 콘솔 로그 132K)이 untracked로 남아 있어 제외해야 한다. `.env.local`은 `.gitignore`로 제외되어 있다.
+- 저장소에는 `main` 단일 브랜치만 있고 FE/BE 전용 브랜치·worktree도, 원격 remote도 없다. → I-101/I-102/I-103(Merge)은 "해당 없음"으로 처리한다.
+- FE/BE 작업 전체가 working tree에만 커밋되지 않은 상태로 남아 있어 **통합 스냅샷 커밋**으로 기록했다. 커밋 `a01a75f` (132 files, +12398/-202).
+- 커밋 전 정리: `.playwright-cli/`(브라우저 콘솔 로그)을 `.gitignore`에 추가해 제외했다. `.env.local`은 기존 규칙으로 제외되어 있고, 커밋 대상 전수 검사에서 Secret 값은 발견되지 않았다.
+- 남은 사항: `scripts/update_b1_tasks.py`는 Backend 문서 편집용 1회성 스크립트라 커밋에서 제외했다. 정리 여부는 `[!]` 로 남긴다.
 
 **I-005 — [!] Contract 불일치 발견. 아래 차단 항목을 해결하기 전에는 I2/I3의 실제 API 전환을 진행하지 않는다.**
 
