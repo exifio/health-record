@@ -777,23 +777,29 @@ body {
   display: flex;
 }
 .login-btn--google {
-  background-color: var(--surface);
-  color: var(--foreground);
+  /* 브랜드 가이드라인에 맞춰 중립 배경 + 테두리 없음 */
+  background-color: #f8f9fa;
+  color: #1f2328;
+  border-color: transparent;
 }
 .login-btn--google:hover {
-  background-color: var(--surface-hover);
+  background-color: #f1f3f4;
 }
 .login-btn--kakao {
   color: #191919;
   background-color: #fee500;
   border-color: #fee500;
 }
+.login-btn--kakao:hover {
+  background-color: #f5d900;
+}
+/* 준비 중인 카카오 버튼도 브랜드 색은 유지하고, 비활성 affordance만 준다. */
 .login-btn--kakao.is-disabled {
-  opacity: 0.5;
+  opacity: 0.82;
   cursor: not-allowed;
-  background-color: var(--surface-hover);
-  color: var(--muted-foreground);
-  border-color: var(--border);
+  color: #191919;
+  background-color: #fee500;
+  border-color: #fee500;
 }
 .login-btn--explore {
   border: 1px solid var(--border);

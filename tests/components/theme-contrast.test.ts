@@ -67,6 +67,24 @@ describe("I6-608 다크모드 대비", () => {
     expect(contrast(t.danger, t.background)).toBeGreaterThanOrEqual(4.5);
   });
 
+  it("브랜드 로그인 버튼이 대비 기준을 유지한다 (다크/라이트 공통)", () => {
+    // Google: 중립 배경 + 어두운 글자
+    expect(contrast("#1f2328", "#f8f9fa")).toBeGreaterThanOrEqual(4.5);
+    // Kakao: 브랜드 노랑 + 검정 글자
+    expect(contrast("#191919", "#fee500")).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("카카오 버튼은 준비 중이어도 브랜드 색을 덮어쓰지 않는다", () => {
+    const disabled = css.match(/\.login-btn--kakao\.is-disabled\s*\{[^}]+\}/)?.[0] ?? "";
+
+    expect(disabled).toContain("#fee500");
+    expect(disabled).toContain("#191919");
+    expect(disabled).toContain("cursor: not-allowed");
+    // 흐림을 너무 주면 브랜드 버튼처럼 보이지 않는다.
+    const opacity = Number(disabled.match(/opacity:\s*([\d.]+)/)?.[1] ?? "0");
+    expect(opacity).toBeGreaterThanOrEqual(0.8);
+  });
+
   it(".btn-danger은 solid 토큰을 배경으로 사용한다", () => {
     const rules = css.match(/\.btn-danger\s*\{[^}]+\}/g) ?? [];
 

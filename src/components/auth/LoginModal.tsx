@@ -73,7 +73,12 @@ export function LoginModal({
             data-testid="google-login-btn"
           >
             <span className="login-btn-icon" aria-hidden="true">
-              G
+              <svg viewBox="0 0 24 24" width="18" height="18" focusable="false">
+                <path d="M4 12a8 8 0 0 1 16 0" fill="none" stroke="#4285F4" strokeWidth="3.4" />
+                <path d="M13.6 12H20" fill="none" stroke="#FBBC05" strokeWidth="3.4" />
+                <path d="M20 12a8 8 0 0 1-8 8" fill="none" stroke="#EA4335" strokeWidth="3.4" />
+                <path d="M12 20a8 8 0 0 1-8-8" fill="none" stroke="#34A853" strokeWidth="3.4" />
+              </svg>
             </span>
             <span>Google로 계속하기</span>
           </button>
@@ -87,7 +92,12 @@ export function LoginModal({
             data-testid="kakao-login-btn"
           >
             <span className="login-btn-icon" aria-hidden="true">
-              K
+              <svg viewBox="0 0 24 24" width="18" height="18" focusable="false">
+                <path
+                  d="M12 3C6.3 3 2 6.6 2 11.1c0 2.9 1.7 5.4 4.3 6.8-.2 1.2-.8 2.6-1.9 3.6 2.4-.2 4.4-1.1 5.7-2.3.6.1 1.3.2 1.9.2 5.7 0 10-3.6 10-8.1S17.7 3 12 3z"
+                  fill="#191919"
+                />
+              </svg>
             </span>
             <span>Kakao 로그인 — 준비 중</span>
           </button>
