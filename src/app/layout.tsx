@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ThemeProvider } from "@/features/theme/theme-context";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,8 +9,26 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ko">
-      <body>{children}</body>
+    <html lang="ko" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const stored = localStorage.getItem("health-record-theme");
+                if (stored === "dark" || (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+                  document.documentElement.setAttribute("data-theme", "dark");
+                } else if (stored === "light") {
+                  document.documentElement.setAttribute("data-theme", "light");
+                }
+              } catch (e) {}
+            `,
+          }}
+        />
+      </head>
+      <body>
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

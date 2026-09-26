@@ -66,9 +66,9 @@
 | 영역 | 상태 | 상세 문서 |
 |---|---|---|
 | 공통 기반 | 완료 | 이 문서의 `0. 공통 선행 작업` |
-| 프론트엔드 | 대기 | `docs/tasks/FRONTEND_TASKS.md` |
-| 백엔드 | 대기 | `docs/tasks/BACKEND_TASKS.md` |
-| 통합 | 대기 | `docs/tasks/INTEGRATION_TASKS.md` |
+| 프론트엔드 | 완료 | `docs/tasks/FRONTEND_TASKS.md` |
+| 백엔드 | 완료 (B-613 이월) | `docs/tasks/BACKEND_TASKS.md` |
+| 통합 | 진행 중 (I0 검증 완료, Contract 차단 2건) | `docs/tasks/INTEGRATION_TASKS.md` |
 | 최종 QA / 배포 | 대기 | `docs/tasks/INTEGRATION_TASKS.md` |
 
 상태는 각 상세 TASK 문서의 실제 진행 상황에 맞춰 갱신합니다.

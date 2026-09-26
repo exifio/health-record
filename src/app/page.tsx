@@ -1,7 +1,11 @@
+import React from "react";
+import { AuthenticatedApp } from "@/components/layout/AuthenticatedApp";
+import { HomeContent } from "@/features/home/HomeContent";
+
 export default function HomePage() {
   return (
-    <main>
-      <h1>건강 기록</h1>
-    </main>
+    <AuthenticatedApp>
+      <HomeContent />
+    </AuthenticatedApp>
   );
 }

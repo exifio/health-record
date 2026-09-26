@@ -219,3 +219,5 @@ export type ProfileResponse = z.infer<typeof ProfileResponseSchema>;
 export type UpdateProfileRequest = z.infer<typeof UpdateProfileRequestSchema>;
 export type ApiErrorResponse = z.infer<typeof ApiErrorResponseSchema>;
 export type SummaryJobResponse = z.infer<typeof SummaryJobResponseSchema>;
+export type Suggestion = z.infer<typeof SuggestionSchema>;
+export type DailyRecordListItem = z.infer<typeof DailyRecordListItemSchema>;
