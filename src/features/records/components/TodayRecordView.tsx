@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useHealthApi, getSystemLocalDate, getSystemTimeZone } from "@/features/api/api-adapter";
+import { API_ERROR_CODES, isApiError } from "@/features/records/api/health-api";
 import { useAuth } from "@/features/auth/auth-context";
 import { RecordTimeline } from "@/components/records/RecordTimeline";
 import { RecordComposer } from "@/components/records/RecordComposer";
@@ -74,9 +75,8 @@ export function TodayRecordView() {
           setRecord(recordRes.value.record);
           setMessages(recordRes.value.record.messages);
         } else {
-          const message =
-            recordRes.reason instanceof Error ? recordRes.reason.message : "";
-          if (message.includes("기록이 없습니다") || message.includes("404")) {
+          // I-201: 실제 API의 404 메시지 문자열이 아니라 contract error code로 판단한다.
+          if (isApiError(recordRes.reason, API_ERROR_CODES.recordNotFound)) {
             setRecord(null);
             setMessages([]);
           } else {
@@ -118,9 +118,7 @@ export function TodayRecordView() {
         setRecord(recordRes.value.record);
         setMessages(recordRes.value.record.messages);
       } else {
-        const message =
-          recordRes.reason instanceof Error ? recordRes.reason.message : "";
-        if (message.includes("기록이 없습니다") || message.includes("404")) {
+        if (isApiError(recordRes.reason, API_ERROR_CODES.recordNotFound)) {
           setRecord(null);
           setMessages([]);
         } else {

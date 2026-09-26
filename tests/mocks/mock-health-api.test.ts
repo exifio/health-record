@@ -85,7 +85,10 @@ describe("createMockHealthApi (F-007)", () => {
 
     // 13. deleteDailyRecord
     await api.deleteDailyRecord("2026-09-25");
-    await expect(api.getDailyRecord("2026-09-25")).rejects.toThrow("기록이 없습니다.");
+    await expect(api.getDailyRecord("2026-09-25")).rejects.toMatchObject({
+      code: "RECORD_NOT_FOUND",
+      status: 404,
+    });
 
     // 14. deleteHealthData & deleteAccount
     await api.deleteHealthData();

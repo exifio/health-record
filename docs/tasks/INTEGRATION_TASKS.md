@@ -119,14 +119,32 @@ Contract 충돌이 있으면 구현 중 한쪽을 임의 기준으로 삼지 않
 
 # I2. 오늘 기록 실제 API 연결
 
-- [ ] **I-201** 오늘 기록 Mock 조회 → 실제 API 교체
-- [ ] **I-202** 메시지 생성 Mock → 실제 API 교체
-- [ ] **I-203** 메시지 수정 Mock → 실제 API 교체
-- [ ] **I-204** 메시지 삭제 Mock → 실제 API 교체
-- [ ] **I-205** 시스템 날짜가 올바른 `local_date` 경로로 전달되는지 검증
-- [ ] **I-206** 시스템 timezone metadata가 사용자 입력 없이 전달되는지 검증
-- [ ] **I-207** 이미 생성된 과거 기록 날짜가 시스템 timezone 변경으로 재분류되지 않는지 검증
-- [ ] **I-208** 저장 실패/네트워크 오류 UX 검증
+- [x] **I-201** 오늘 기록 Mock 조회 → 실제 API 교체
+- [x] **I-202** 메시지 생성 Mock → 실제 API 교체
+- [x] **I-203** 메시지 수정 Mock → 실제 API 교체
+- [x] **I-204** 메시지 삭제 Mock → 실제 API 교체
+- [x] **I-205** 시스템 날짜가 올바른 `local_date` 경로로 전달되는지 검증
+- [x] **I-206** 시스템 timezone metadata가 사용자 입력 없이 전달되는지 검증
+- [x] **I-207** 이미 생성된 과거 기록 날짜가 시스템 timezone 변경으로 재분류되지 않는지 검증
+- [x] **I-208** 저장 실패/네트워크 오류 UX 검증
+
+### I2 진행 기록 (2026-09-26)
+
+실제 API 모드(`NEXT_PUBLIC_USE_MOCK=false`)로 dev 서버를 띄우고 로그인한 실브라우저에서 확인했다.
+
+- **환경 함정 발견:** 셸 환경에 구 프로젝트 값(`NEXT_PUBLIC_SUPABASE_URL=https://qkwnzwmoaszuwkrkxsvm.supabase.co`, anon key 빈 값)이 남아 있어 `.env.local`을 덮어썼고 Google OAuth가 존재하지 않는 프로젝트로 리다이렉트됐다. Next.js는 process env가 `.env.local`보다 우선하므로, 관련 변수를 `env -u`로 제거하고 시작해야 실제 프로젝트가 적용된다.
+- **결함 1 — 404가 오류 화면으로 처리됨 (수정).** 화면이 `message.includes("기록이 없습니다") || message.includes("404")`로 빈 상태를 판별했는데, Mock은 "기록이 없습니다."를 던지고 실제 API는 `RECORD_NOT_FOUND: 기록을 찾을 수 없습니다.`를 던진다. 문자열에 "404"도 없으므로 **기록이 없는 날이 오류 화면으로 표시**됐다.
+  - `health-api.ts`에 `HealthApiError(code, status, message)`와 `isApiError()`를 추가하고, Mock도 같은 형태를 던지도록 맞췄다(AGENTS §9: Mock과 실제 API의 형태 일치).
+  - `TodayRecordView`·`RecordDateContent`은 이제 `API_ERROR_CODES.recordNotFound`로만 분기한다. 남은 문자열 매칭은 0건이다.
+  - 회귀 테스트: Mock↔실제 404의 code/status 동등성, 네트워크 오류는 `TypeError` 그대로, 500은 빈 상태로 오분류되지 않음을 검증한다.
+- **I-201**: 기록이 없는 날짜가 오류가 아닌 빈 상태로 표시되는 것을 실제 API로 확인.
+- **I-202**: 메시지 작성 → HTTP 201, `content_revision=1`, `summary_status=not_due`.
+- **I-203**: 메시지 수정 → `updated_at` 변경, `content_revision` 1 → 2.
+- **I-204**: 마지막 메시지 삭제 → 메시지와 빈 draft record가 함께 정리(B-112 정책 실동작 확인).
+- **I-205/I-206**: 브라우저 시스템 시간(KST)로 계산한 `local_date=2026-09-26`, `timezone_at_creation=Asia/Seoul`이 사용자 입력 없이 저장됨을 DB에서 확인.
+- **I-207**: CDP `Emulation.setTimezoneOverride`로 브라우저를 Pacific/Midway(오늘=2026-09-25)로 바꾼 뒤, 기존 기록의 `local_date=2026-09-26`·`timezone_at_creation=Asia/Seoul`이 그대로 유지됨을 확인(재분류 없음). 목록에서 안 보이는 것은 조회 범위([today-90, today]) 밖이라서이며, 데이터는 변경되지 않는다.
+- **I-208**: CDP 오프라인 모드에서 저장 시도 → "기록을 저장하지 못했습니다. 다시 시도해주세요." 표시, 페이지 무결성 유지, 기존 기록/제안 표시 정상.
+- 검증 후 생성한 메시지·record는 모두 삭제해 DB를 원래 상태로 되돌렸고, 브라우저 timezone/네트워크도 복구했다.
 
 ---
 

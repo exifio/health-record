@@ -1,3 +1,4 @@
+import { API_ERROR_CODES, HealthApiError } from "@/features/records/api/health-api";
 import {
   ConfirmRecordResponseSchema,
   CreateCorrectionRequestSchema,
@@ -75,7 +76,7 @@ export function createMockHealthApi(customStore?: Partial<MockStore>): HealthApi
       const requestedDate = LocalDateSchema.parse(date);
       const record = store.records.get(requestedDate);
       if (!record) {
-        throw new Error("기록이 없습니다.");
+        throw new HealthApiError(API_ERROR_CODES.recordNotFound, 404, "기록을 찾을 수 없습니다.");
       }
       return DailyRecordResponseSchema.parse({ record: JSON.parse(JSON.stringify(record)) });
     },
@@ -114,7 +115,7 @@ export function createMockHealthApi(customStore?: Partial<MockStore>): HealthApi
         store.records.set(validDate, record);
       } else {
         if (record.recordStatus === "confirmed") {
-          throw new Error("확정된 기록은 수정할 수 없습니다.");
+          throw new HealthApiError(API_ERROR_CODES.recordConfirmed, 409, "확정된 기록은 수정할 수 없습니다.");
         }
         record.contentRevision += 1;
         record.messages.push(newMessage);
@@ -141,13 +142,13 @@ export function createMockHealthApi(customStore?: Partial<MockStore>): HealthApi
       const validInput = UpdateMessageRequestSchema.parse(input);
 
       const record = store.records.get(validDate);
-      if (!record) throw new Error("기록이 없습니다.");
+      if (!record) throw new HealthApiError(API_ERROR_CODES.recordNotFound, 404, "기록을 찾을 수 없습니다.");
       if (record.recordStatus === "confirmed") {
-        throw new Error("확정된 기록은 수정할 수 없습니다.");
+        throw new HealthApiError(API_ERROR_CODES.recordConfirmed, 409, "확정된 기록은 수정할 수 없습니다.");
       }
 
       const msg = record.messages.find((m) => m.id === validMessageId);
-      if (!msg) throw new Error("메시지를 찾을 수 없습니다.");
+      if (!msg) throw new HealthApiError(API_ERROR_CODES.messageNotFound, 404, "메시지를 찾을 수 없습니다.");
 
       msg.content = validInput.content;
       msg.updatedAt = new Date().toISOString();
@@ -172,9 +173,9 @@ export function createMockHealthApi(customStore?: Partial<MockStore>): HealthApi
       const validMessageId = UuidSchema.parse(messageId);
 
       const record = store.records.get(validDate);
-      if (!record) throw new Error("기록이 없습니다.");
+      if (!record) throw new HealthApiError(API_ERROR_CODES.recordNotFound, 404, "기록을 찾을 수 없습니다.");
       if (record.recordStatus === "confirmed") {
-        throw new Error("확정된 기록은 수정할 수 없습니다.");
+        throw new HealthApiError(API_ERROR_CODES.recordConfirmed, 409, "확정된 기록은 수정할 수 없습니다.");
       }
 
       record.messages = record.messages.filter((m) => m.id !== validMessageId);
@@ -204,9 +205,9 @@ export function createMockHealthApi(customStore?: Partial<MockStore>): HealthApi
       const validInput = UpdateSummaryRequestSchema.parse(input);
 
       const record = store.records.get(validDate);
-      if (!record) throw new Error("기록이 없습니다.");
+      if (!record) throw new HealthApiError(API_ERROR_CODES.recordNotFound, 404, "기록을 찾을 수 없습니다.");
       if (record.recordStatus === "confirmed") {
-        throw new Error("확정된 기록은 수정할 수 없습니다.");
+        throw new HealthApiError(API_ERROR_CODES.recordConfirmed, 409, "확정된 기록은 수정할 수 없습니다.");
       }
 
       const now = new Date().toISOString();
@@ -228,9 +229,9 @@ export function createMockHealthApi(customStore?: Partial<MockStore>): HealthApi
     async confirmRecord(date: LocalDate): Promise<ConfirmRecordResponse> {
       const validDate = LocalDateSchema.parse(date);
       const record = store.records.get(validDate);
-      if (!record) throw new Error("기록이 없습니다.");
+      if (!record) throw new HealthApiError(API_ERROR_CODES.recordNotFound, 404, "기록을 찾을 수 없습니다.");
       if (record.summaryStatus === "stale") {
-        throw new Error("최신 요약이 준비되지 않아 확정할 수 없습니다.");
+        throw new HealthApiError("SUMMARY_NOT_READY", 409, "확인할 수 있는 요약이 아직 준비되지 않았습니다.");
       }
 
       const confirmedAt = new Date().toISOString();
@@ -246,9 +247,9 @@ export function createMockHealthApi(customStore?: Partial<MockStore>): HealthApi
       const validInput = CreateCorrectionRequestSchema.parse(input);
 
       const record = store.records.get(validDate);
-      if (!record) throw new Error("기록이 없습니다.");
+      if (!record) throw new HealthApiError(API_ERROR_CODES.recordNotFound, 404, "기록을 찾을 수 없습니다.");
       if (record.recordStatus !== "confirmed") {
-        throw new Error("확정된 기록에만 정정을 추가할 수 있습니다.");
+        throw new HealthApiError(API_ERROR_CODES.recordNotConfirmed, 409, "확정된 기록에만 정정을 추가할 수 있습니다.");
       }
 
       const correction = {

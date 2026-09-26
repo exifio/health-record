@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { RecordsShell } from "@/components/layout/RecordsShell";
 import { useHealthApi } from "@/features/api/api-adapter";
+import { API_ERROR_CODES, isApiError } from "@/features/records/api/health-api";
 import { useAuth } from "@/features/auth/auth-context";
 import { DailySummaryCard } from "@/components/summary/DailySummaryCard";
 import { LoadingState } from "@/components/common/LoadingState";
@@ -38,8 +39,7 @@ export function RecordDateContent({ date }: { date: LocalDate }) {
         }
       } catch (err: unknown) {
         if (!ignore) {
-          const message = err instanceof Error ? err.message : "";
-          if (message.includes("기록이 없습니다") || message.includes("404")) {
+          if (isApiError(err, API_ERROR_CODES.recordNotFound)) {
             setRecord(null);
           } else {
             setError("기록을 불러오지 못했습니다. 다시 시도해주세요.");
@@ -65,8 +65,7 @@ export function RecordDateContent({ date }: { date: LocalDate }) {
     api.getDailyRecord(date)
       .then((res) => setRecord(res.record))
       .catch((err) => {
-        const message = err instanceof Error ? err.message : "";
-        if (message.includes("기록이 없습니다") || message.includes("404")) {
+        if (isApiError(err, API_ERROR_CODES.recordNotFound)) {
           setRecord(null);
         } else {
           setError("기록을 불러오지 못했습니다. 다시 시도해주세요.");

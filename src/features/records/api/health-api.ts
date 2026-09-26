@@ -59,17 +59,49 @@ export interface HealthApi {
   deleteAccount(): Promise<void>;
 }
 
+/**
+ * API 오류를 코드/상태로 판별할 수 있게 한다.
+ * 실제 API와 Mock이 같은 형태를 던지도록 화면은 메시지 문자열이 아니라 code로 분기한다.
+ * status 0은 네트워크 오류(응답 없음)를 뜻한다.
+ */
+export class HealthApiError extends Error {
+  constructor(
+    readonly code: string,
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "HealthApiError";
+  }
+}
+
+/** 메시지 문자열이 아니라 error code로 판단해야 하는 공통 오류 목록 */
+export const API_ERROR_CODES = {
+  recordNotFound: "RECORD_NOT_FOUND",
+  messageNotFound: "MESSAGE_NOT_FOUND",
+  recordConfirmed: "RECORD_CONFIRMED",
+  recordNotConfirmed: "RECORD_NOT_CONFIRMED",
+  recordDateNotWritable: "RECORD_DATE_NOT_WRITABLE",
+  unauthenticated: "UNAUTHENTICATED",
+} as const;
+
+export function isApiError(error: unknown, code: string): boolean {
+  return error instanceof HealthApiError && error.code === code;
+}
+
 async function throwApiError(response: Response): Promise<never> {
   let body: unknown;
   try {
     body = await response.json();
   } catch {
-    throw new Error(`API request failed (${response.status}).`);
+    throw new HealthApiError("UNKNOWN_ERROR", response.status, `API request failed (${response.status}).`);
   }
 
   const error = ApiErrorResponseSchema.safeParse(body);
-  if (!error.success) throw new Error(`API request failed (${response.status}).`);
-  throw new Error(`${error.data.error.code}: ${error.data.error.message}`);
+  if (!error.success) {
+    throw new HealthApiError("UNKNOWN_ERROR", response.status, `API request failed (${response.status}).`);
+  }
+  throw new HealthApiError(error.data.error.code, response.status, error.data.error.message);
 }
 
 export function createHealthApi(fetcher: typeof fetch = fetch): HealthApi {
