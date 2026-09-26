@@ -69,10 +69,24 @@ describe("I6-608 다크모드 대비", () => {
   });
 
   it("브랜드 로그인 버튼이 대비 기준을 유지한다 (다크/라이트 공통)", () => {
-    // Google: 중립 배경 + 어두운 글자
-    expect(contrast("#1f2328", "#f8f9fa")).toBeGreaterThanOrEqual(4.5);
+    // Google: 흰 배경 + 어두운 글자 (모달 카드 위에도 테두리로 구분되게 둔다)
+    expect(contrast("#1f2328", "#ffffff")).toBeGreaterThanOrEqual(4.5);
     // Kakao: 브랜드 노랑 + 검정 글자
     expect(contrast("#191919", "#fee500")).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("로그인 모달의 액션 위계를 1순위 > 3순위로 분명히 둔다", () => {
+    const google = css.match(/\.login-btn--google\s*\{[^}]+\}/)?.[0] ?? "";
+    const explore = css.match(/\.login-btn--explore\s*\{[^}]+\}/)?.[0] ?? "";
+
+    // "구글로 로그인"은 버튼으로 보여야 한다(테두리 필수).
+    // 테두리를 없애면 3순위인 "둘러보기"보다 약해져 역전된다.
+    expect(google).toMatch(/border-color:\s*#[0-9a-f]{6}/i);
+    expect(google).not.toContain("transparent");
+
+    // "둘러보기"는 버튼이 아니라 텍스트 링크로 물러나야 한다.
+    expect(explore).toMatch(/border:[^;]*transparent/);
+    expect(explore).not.toMatch(/border:[^;]*var\(--border\)/);
   });
 
   it("카카오 버튼은 준비 중일 때 활성 버튼과 구분된다", () => {
