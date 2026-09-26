@@ -68,7 +68,7 @@
 | 공통 기반 | 완료 | 이 문서의 `0. 공통 선행 작업` |
 | 프론트엔드 | 완료 | `docs/tasks/FRONTEND_TASKS.md` |
 | 백엔드 | 완료 (B-613 이월) | `docs/tasks/BACKEND_TASKS.md` |
-| 통합 | 진행 중 (I0 검증 완료, Contract 차단 2건) | `docs/tasks/INTEGRATION_TASKS.md` |
+| 통합 | 진행 중 (I0 완료, 신규 차단 1건 — write API `auth.uid()`) | `docs/tasks/INTEGRATION_TASKS.md` |
 | 최종 QA / 배포 | 대기 | `docs/tasks/INTEGRATION_TASKS.md` |
 
 상태는 각 상세 TASK 문서의 실제 진행 상황에 맞춰 갱신합니다.
@@ -103,5 +103,6 @@
 - [!] 과거에 기록이 전혀 없는 날짜를 사용자가 새로 작성할 수 있게 할지
 - [!] 공개 전 개인정보 / AI 처리 안내 최종 문구
 - [!] 운영 오류 모니터링 / Analytics 도구를 사용할 경우 건강 원문 제거 설정
+- [!] DB 함수의 `auth.uid()` 검증과 서버의 service role 호출 경로 불일치 (Integration I0에서 실측). 메시지 작성/수정/삭제, 요약 수정, 확정, 정정, 삭제 API가 전부 403으로 실패한다. 상세와 선택지는 `docs/tasks/INTEGRATION_TASKS.md` I0 진행 기록 참조.
 
 시간대는 추가 사용자 설정 항목으로 두지 않습니다. 기록 시점의 **기기/브라우저 시스템 시간대**를 자동 사용합니다.

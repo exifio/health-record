@@ -23,7 +23,7 @@
 - [x] **I-002** `FRONTEND_TASKS.md`의 MVP 구현 작업 완료 확인
 - [x] **I-003** `BACKEND_TASKS.md`의 MVP 구현 작업 완료 확인
 - [x] **I-004** Frontend / Backend Branch 최신 commit 확인
-- [!] **I-005** `docs/API.md`와 `src/contracts/**` 변경 여부 확인
+- [x] **I-005** `docs/API.md`와 `src/contracts/**` 변경 여부 확인
 
 ### I0 진행 기록 (2026-09-26)
 
@@ -40,20 +40,32 @@
 - 커밋 전 정리: `.playwright-cli/`(브라우저 콘솔 로그)을 `.gitignore`에 추가해 제외했다. `.env.local`은 기존 규칙으로 제외되어 있고, 커밋 대상 전수 검사에서 Secret 값은 발견되지 않았다.
 - 남은 사항: `scripts/update_b1_tasks.py`는 Backend 문서 편집용 1회성 스크립트라 커밋에서 제외했다. 정리 여부는 `[!]` 로 남긴다.
 
-**I-005 — [!] Contract 불일치 발견. 아래 차단 항목을 해결하기 전에는 I2/I3의 실제 API 전환을 진행하지 않는다.**
+**I-005 — 완료. 아래 두 차단 항목을 해결했다.**
 
 - `docs/API.md`는 C-002 이후 변경이 없다(`git diff` 0). `src/contracts/index.ts`는 `Suggestion`, `DailyRecordListItem` 타입 export 2줄만 추가되었고 **스키마 자체 변경은 없다.** → Contract 정의 충돌은 없다.
-- **차단 1: `POST /api/daily-records/:date/summary/retry` 미구현.** `docs/API.md` 9절에 정의돼 있고, `src/features/records/api/health-api.ts:134`의 `retrySummary()`가 UI `다시 정리하기` 버튼(`src/components/summary/DailySummaryCard.tsx:188,205`)에서 호출한다. 대응 route 파일도 service 함수도 없어 실제 API 모드에서는 404가 난다. B-3xx 공백이며 I-304를 직접 막는다. → Contract(`API.md` 9절)에 맞춰 구현해야 한다.
-- **차단 2: 인증 endpoint가 `docs/API.md`에 없다.** `/api/auth/google`, `/api/auth/callback`, `/api/auth/logout`이 구현돼 있고 클라이언트(`src/features/auth/auth-context.tsx:33`)가 `POST /api/auth/logout`을 호출하는데 Contract에 정의가 없다. I-105에서 추가된 경로다. 문서화하거나 "Contract 범위 밖"으로 명시해야 한다.
-- 참고(차단 아님): 서버가 실제로 쓰는 `MESSAGE_NOT_FOUND`(404), `RECORD_NOT_CONFIRMED`(409)가 API.md 1절 "대표 code" 목록에 없다. `tests/contracts/**`는 응답 스키마만 검증하고 메서드→경로 매핑을 검증하지 않아 위 retry 누락을 잡지 못했다. I2/I3에서 라우트 매핑 contract test를 추가하는 것을 권장한다.
+- **차단 1 해결: `POST /api/daily-records/:date/summary/retry` 구현.** `docs/API.md` 9절에 맞춰 `retryDailySummary()`(`src/server/daily-records/summary-service.ts`)와 route(`src/app/api/daily-records/[date]/summary/retry/route.ts`)를 추가했다. `failed`/`stale`만 `pending`으로 되돌리고, `pending` 중복 호출은 같은 202를 반환하며, `not_due`/`processing`/`ready`/확정 기록은 409로 거절한다. 새 마이그레이션은 필요 없다(기존 `daily_records` update grant + 세션 사용자 `user_id` 조건부 UPDATE). 재시도 자체는 AI를 호출하지 않고 스케줄러가 이어서 처리한다.
+- **차단 2 해결: 인증 endpoint 문서화.** `docs/API.md` 19절에 `GET /api/auth/google`, `GET /api/auth/callback`, `POST /api/auth/logout`의 요청·응답·오류 규칙을 추가했다.
+- **정합 보완:** 1절 error code 목록에 실제로 쓰이는 `MESSAGE_NOT_FOUND`, `RECORD_NOT_CONFIRMED`와 이번에 추가한 `SUMMARY_NOT_RETRYABLE`을 반영했다. 9절에 상태별 허용/거절 규칙과 idempotency, 스케줄러 연동 설명을 보완했다.
+- **재발 방지:** `tests/contracts/api-route-mapping.test.ts`를 추가했다. HealthApi 16개 메서드가 기대한 method/path를 호출하는지, 그 경로와 `docs/API.md`에 정의된 모든 endpoint에 실제 route가 있는지, 구현된 route 중 Contract에 없는 것이 없는지를 양방향으로 검증한다. retry route를 임시로 제거하면 2건이 실패하는 것을 확인했다.
 
 ### I0 검증 결과
 
 - `npm run typecheck` 통과
 - `npm run lint` 통과
-- `npm test` → 36 suites / 198 tests 통과
-- `npm run build` 통과, 페이지 6개(`/`, `/today`, `/records`, `/records/[date]`, `/settings`, `/visit-prep`) 전부 Dynamic 렌더링
-- 라우트 대조 결과: API.md 18절 기준 17개 endpoint 중 16개 구현, `summary/retry` 1개만 미구현. API.md에 없는 인증 endpoint 3개가 추가 구현되어 있다.
+- `npm test` → 39 suites / 233 tests 통과 (I-005 반영 전 36 suites / 198 tests)
+- `npm run build` 통과, `/api/daily-records/[date]/summary/retry` 라우트 등록 확인. 페이지 6개 전부 Dynamic 렌더링
+- 실브라우저 대신 dev 서버로 확인: 세션 없는 `POST /summary/retry`는 DB 접근 전에 401 `UNAUTHENTICATED`를 반환한다(404/500 아님)
+- 라우트 대조 결과: `docs/API.md`에 정의된 20개 endpoint 전부 구현, Contract에 정의되지 않은 구현 route 없음
+
+### I0에서 발견한 신규 차단 항목 (I2/I3 착수 전 해결 필요)
+
+- [!] **DB 함수의 `auth.uid()` 검증이 서버 호출 경로와 어긋남 (전체 write API 영향)**
+  - `supabase/migrations/**`의 사용자 데이터 RPC 7개(`create_record_message`, `update_record_message`, `delete_record_message`, `update_daily_summary`, `confirm_daily_record`, `create_record_correction`, B6 삭제 3개)는 모두 `if (select auth.uid()) is distinct from p_user_id then raise exception 'FORBIDDEN'`로 시작한다.
+  - 그런데 서버는 이 RPC를 `createAdminClient()`(service role key)로 호출한다. service role JWT에는 `sub`가 없어 `auth.uid()`가 NULL이므로 **무조건 FORBIDDEN**이 된다.
+  - 실측: 원격 프로젝트에 service role key로 `POST /rest/v1/rpc/create_record_message`를 호출해 `HTTP 403 {"code":"42501","message":"FORBIDDEN"}`을 확인했다. 실패 시 트랜잭션이 롤백되어 데이터는 생성되지 않았다.
+  - 영향 범위: 메시지 추가/수정/삭제, 요약 수정, 확정, 정정 추가, 하루 삭제, 전체 건강 기록 삭제, 계정 삭제. 즉 **I2/I3/I4/I6의 실제 API 전환이 전부 실패한다.** 조회는 `user_id` 조건부 select라 정상 동작하며(GET 실브라우저 검증 완료), 스케줄러용 `claim/complete/fail_daily_summary`는 service role 전용이라 정상이다.
+  - 선택지: (A) RPC 호출을 사용자 세션 클라이언트(`createServerClient()`)로 바꿔 `auth.uid()`와 RLS가 실제로 작동하게 한다 — DB 함수를 그대로 활용하므로 가장 권장. (B) `createAdminClient()`에 사용자 access token을 `Authorization` 헤더로 주입한다. (C) DB 함수에서 `auth.uid()` 검증을 제거한다 — 검증이 느슨해져 비권장.
+  - `src/server/**`, `src/app/api/**`, `supabase/migrations/**`는 Backend 담당 영역이므로 Integration이 임의로 수정하지 않고 `[!]` 로 남긴다.
 
 Contract 충돌이 있으면 구현 중 한쪽을 임의 기준으로 삼지 않습니다.
 `docs/API.md`와 `src/contracts/**`를 먼저 확정한 뒤 양쪽 코드를 맞춥니다.

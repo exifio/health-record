@@ -23,7 +23,7 @@
 }
 ```
 
-대표 status/code: `400 VALIDATION_ERROR`, `401 UNAUTHENTICATED`, `403 FORBIDDEN`, `404 RECORD_NOT_FOUND`, `409 RECORD_CONFIRMED | SUMMARY_NOT_READY | SUMMARY_STALE`, `500 INTERNAL_ERROR`, `503 AI_SUGGESTION_FAILED | AI_SUMMARY_FAILED`.
+대표 status/code: `400 VALIDATION_ERROR`, `401 UNAUTHENTICATED`, `403 FORBIDDEN`, `404 RECORD_NOT_FOUND | MESSAGE_NOT_FOUND`, `409 RECORD_CONFIRMED | RECORD_NOT_CONFIRMED | SUMMARY_NOT_READY | SUMMARY_STALE | SUMMARY_NOT_RETRYABLE`, `500 INTERNAL_ERROR`, `503 AI_SUGGESTION_FAILED | AI_SUMMARY_FAILED`.
 
 ## 2. 공통 타입
 
@@ -204,10 +204,15 @@ AI 실패:
 
 ### POST `/api/daily-records/:date/summary/retry`
 
-Allowed:
-- failed
-- stale
-- pending 상태에서 중복 호출은 idempotent하게 처리
+Request body 없음
+
+Rules:
+- `failed`, `stale`에서 `pending`으로 되돌려 스케줄러가 다시 정리하도록 합니다.
+- `pending`에서 중복 호출은 상태를 바꾸지 않고 같은 202를 반환합니다.
+- `not_due`(아직 하루가 끝나지 않음), `processing`(이미 정리 중), `ready`(정리 완료), 확정된 record는 409 `SUMMARY_NOT_RETRYABLE`로 거절합니다.
+- 기록이 없으면 404 `RECORD_NOT_FOUND`.
+- 재시도는 원문(`content_revision`)을 바꾸지 않고, `processing_started_at`만 비웁니다.
+- 재시도 자체는 AI를 호출하지 않습니다. 실제 AI 호출은 스케줄러(18절)가 담당하며, 사용자는 `pending` 상태를 새로고침해 확인합니다.
 
 Response 202:
 
@@ -405,3 +410,34 @@ Response 예:
   "failed": 1
 }
 ```
+
+## 19. 인증
+
+인증 endpoint는 MVP 범위 안의 Contract이며, 프론트/백엔드가 함께 사용하는 경로입니다.
+MVP는 Google 로그인만 제공하며 Kakao 로그인은 구현하지 않습니다.
+
+### GET `/api/auth/google`
+
+- Request body 없음
+- Supabase OAuth 인가 URL로 302 리다이렉트합니다.
+- redirect target은 `/api/auth/callback`입니다.
+- 인증 실패 시 `500 INTERNAL_ERROR`
+
+### GET `/api/auth/callback`
+
+Query:
+
+```text
+?code=<authorization code>
+```
+
+- `code`가 없으면 `400 VALIDATION_ERROR`
+- 세션 교환에 성공하면 `/`로 307 리다이렉트합니다.
+- code 교환 실패 시 `400 VALIDATION_ERROR`
+
+### POST `/api/auth/logout`
+
+- Request body 없음
+- 현재 브라우저 세션만 종료합니다(`scope: "local"`).
+- Response 204
+- 세션이 이미 없는 경우에도 204를 반환합니다.
