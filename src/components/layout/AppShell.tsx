@@ -56,12 +56,6 @@ export function AppShell({ children, recentRecords }: AppShellProps) {
               건강 기록
             </Link>
           </div>
-
-          <div className="app-header-right">
-            <Link href="/today" className="header-action-link">
-              오늘 기록
-            </Link>
-          </div>
         </header>
 
         {/* Main Content Body */}

@@ -36,3 +36,28 @@ describe("로그아웃 동작 (I7 결함 반영)", () => {
     expect(logoutIndex).not.toBe(deleteIndex);
   });
 });
+
+describe("데이터 관리 메뉴의 로그인 게이팅 (I7 결함 반영)", () => {
+  it("계정 삭제는 로그인한 사용자에게만 노출한다", () => {
+    // 계정은 로그인한 사용자에게만 존재한다. 익명/데모에서 누르면 서버가 401로 거절한다.
+    expect(source).toContain("const canDeleteAccount = isAuthenticated;");
+    const accountRow = source.indexOf('data-testid="delete-account-btn"');
+    const guard = source.lastIndexOf("{canDeleteAccount && (", accountRow);
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(accountRow);
+  });
+
+  it("전체 건강 기록 삭제는 로그인/데모에서만 노출한다", () => {
+    // 익명 사용자에게는 지울 데이터가 없고(비로그인 건강정보 입력 금지), API도 401로 거절한다.
+    expect(source).toContain("const canDeleteHealthData = isAuthenticated || isDemo;");
+    const healthRow = source.indexOf('data-testid="delete-all-health-data-btn"');
+    const guard = source.lastIndexOf("{canDeleteHealthData && (", healthRow);
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(healthRow);
+  });
+
+  it("노출할 항목이 하나도 없으면 데이터 관리 섹션 자체를 감춘다", () => {
+    // 빈 섹션 헤더만 남는 것을 막는다.
+    expect(source).toContain("{(canDeleteHealthData || canDeleteAccount) && (");
+  });
+});

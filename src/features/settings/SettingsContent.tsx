@@ -13,6 +13,12 @@ export function SettingsContent() {
   const router = useRouter();
   const { status, logout, isLoginModalOpen, openLoginModal, closeLoginModal, loginWithGoogle, enterDemoMode } = useAuth();
   const isAuthenticated = status === "authenticated";
+  const isDemo = status === "demo";
+  // 계정은 로그인한 사용자에게만 존재한다. 익명/데모에 두면 눌러도 서버가 401로 거절해 고장처럼 보인다.
+  const canDeleteAccount = isAuthenticated;
+  // 익명 사용자는 건강 정보를 입력할 수 없어 지울 데이터가 없다(비로그인 건강정보 입력 금지).
+  // 데모는 Mock 저장소라 실제로 비워지므로 그대로 둔다.
+  const canDeleteHealthData = isAuthenticated || isDemo;
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -196,11 +202,15 @@ export function SettingsContent() {
         dismissible={true}
       />
 
-        {/* F-702 & F-703: Dangerous Data Deletion Actions */}
+        {/* F-702 & F-703: Dangerous Data Deletion Actions
+            서버는 두 삭제 API 모두 requireUser()를 거치므로 로그인하지 않은 상태에서는 401로 실패한다.
+            눌러도 아무 일도 일어나지 않는 버튼을 두지 않도록, 지울 대상이 있는 상태에서만 노출한다. */}
+        {(canDeleteHealthData || canDeleteAccount) && (
         <section className="settings-section settings-section--danger" data-testid="danger-settings-section">
           <h3 className="settings-section-title settings-section-title--danger">데이터 관리</h3>
 
           <div className="danger-actions-list">
+            {canDeleteHealthData && (
             <div className="danger-action-row">
               <div className="danger-action-info">
                 <h4 className="danger-action-name">전체 건강 기록 삭제</h4>
@@ -217,7 +227,9 @@ export function SettingsContent() {
                 건강 기록 삭제
               </button>
             </div>
+            )}
 
+            {canDeleteAccount && (
             <div className="danger-action-row">
               <div className="danger-action-info">
                 <h4 className="danger-action-name">계정 삭제</h4>
@@ -234,8 +246,10 @@ export function SettingsContent() {
                 계정 삭제
               </button>
             </div>
+            )}
           </div>
         </section>
+        )}
 
         {/* F-702 Confirm Modal */}
         {showDeleteDataModal && (
