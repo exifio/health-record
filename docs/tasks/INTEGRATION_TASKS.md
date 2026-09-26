@@ -150,13 +150,29 @@ Contract 충돌이 있으면 구현 중 한쪽을 임의 기준으로 삼지 않
 
 # I3. AI 제안 / 자동 일일 요약 연결
 
-- [ ] **I-301** 실제 추가 기록 제안 API 연결
-- [ ] **I-302** 제안 실패 시 기록 작성 흐름 유지 검증
-- [ ] **I-303** 실제 Summary 상태 연결
-- [ ] **I-304** `다시 정리하기` 실제 API 연결
-- [ ] **I-305** 자동 Summary Job 실행 검증
-- [ ] **I-306** 원문 수정과 AI 요약 생성 Race Condition 검증
-- [ ] **I-307** stale 요약이 확정 가능 상태로 노출되지 않는지 검증
+- [x] **I-301** 실제 추가 기록 제안 API 연결
+- [x] **I-302** 제안 실패 시 기록 작성 흐름 유지 검증
+- [x] **I-303** 실제 Summary 상태 연결
+- [x] **I-304** `다시 정리하기` 실제 API 연결
+- [x] **I-305** 자동 Summary Job 실행 검증
+- [x] **I-306** 원문 수정과 AI 요약 생성 Race Condition 검증
+- [x] **I-307** stale 요약이 확정 가능 상태로 노출되지 않는지 검증
+
+### I3 진행 기록 (2026-09-26)
+
+실제 OpenAI 호출까지 포함해 검증했다. B2/B3 노트에 적힌 "실제 모델 Evaluation 미실시" 공백을 I3에서 메웠다.
+
+- **환경 함정 2번째 발견:** 셸의 `OPENAI_API_KEY`가 구/무효 키(끝자리 `9z_6UA`)였고 `.env.local`의 키(끝자리 `eRVGkA`)와 달랐다. 셸 값이 우선되어 AI 호출이 401로 전부 실패했다. I2에서 발견한 Supabase 변수 오염과 같은 유형이며, **로컬 실행 시 관련 변수를 반드시 `env -u`로 제거해야 한다.**
+  - 참고: `OPENAI_BASE_URL=http://127.0.0.1:8787/v1`은 셸에만 있는 로컬 AI 릴레이 주소다. OpenAI SDK가 이 변수를 기본 baseURL로 읽는다. 배포 시 이 변수를 Vercel에 설정하지 않으면 기본 `api.openai.com`으로 나간다(I-715에서 확인 필요).
+  - 진단 팁: `generateSuggestions`의 catch가 원인을 삼켜 로그에 남지 않는다. AI 실패 원인을 보려면 일시적으로 `error.constructor.name`/`status`만 남기는 진단 로그가 필요하다(원문은 기록하지 말 것).
+- **I-301**: `POST /api/daily-records/:date/suggestions` → 200, 실제 제안 3개(최대 3개 준수), `field`가 contract enum과 일치. 질문만 생성되고 진단·원인·치료 추천이 없었다.
+- **I-302**: `OPENAI_BASE_URL`을 죽은 포트로 바꿔 AI를 강제 실패시킨 뒤 제안은 503 `AI_SUGGESTION_FAILED`, **같은 시점의 메시지 저장은 201**로 성공. 화면에도 오류 배너 없이 기록 목록만 표시되어 기록 작성 흐름이 유지된다(원문 저장과 AI 실패 분리).
+- **I-303**: 스케줄러 실행 후 `not_due → ready`, `daily_summaries`에 `source_revision`(record revision 일치), `model=gpt-5-nano`, `prompt_version=daily-summary-v1`이 기록되어 추적 가능하다(B-314/B-315). timeline/medications/missingInformation이 원문 근거 `sourceMessageIds`와 함께 생성됐다.
+- **I-304**: `다시 정리하기` 클릭 → API가 `pending`으로 되돌리고 화면에 "정리 대기" 표시. 스케줄러 재실행으로 `ready`가 되고 `source_revision`이 최신(1)으로 갱신되며 수정된 원문 내용이 반영됐다.
+- **I-305**: `POST /api/internal/daily-summary/run` — 잘못된 `CRON_SECRET`은 403, 올바른 secret은 `{"claimed":1,"completed":1,"failed":0}`. `completed`가 정확히 증가하는 것은 I0에서 고친 `returns text` 스칼라 반환값 해석 수정의 실동작 증거다.
+- **I-306**: record를 `processing`으로 둔 상태에서 원문을 수정해 revision을 올린 뒤, 진행 중이던 AI 호출이 예전 revision으로 `complete_daily_summary`를 호출 → 반환 `stale`, record는 `stale`로 전환되고 `processing_started_at`은 정리됐다. **낡은 초안은 저장되지 않았고** 저장된 요약은 이전 revision(1) 그대로 남았다.
+- **I-307**: stale 상태에서 `POST /confirm`과 `PATCH /summary`가 모두 409 `SUMMARY_STALE`. 화면에서도 "기록 확정" 버튼이 `disabled`로 노출됐다(F-408).
+- 검증 후 생성한 메시지·record·요약은 모두 삭제해 DB를 원래 상태로 되돌렸다.
 
 ---
 
