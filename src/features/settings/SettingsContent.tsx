@@ -10,7 +10,23 @@ import { useTheme, type Theme } from "@/features/theme/theme-context";
 export function SettingsContent() {
   const api = useHealthApi();
   const router = useRouter();
-  const { logout } = useAuth();
+  const { status, logout } = useAuth();
+  const isAuthenticated = status === "authenticated";
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    setMessage(null);
+    try {
+      await logout();
+      // 이동을 시키면 결과 메시지가 보이지 않아 "아무 일도 안 일어난" 것처럼 보인다.
+      // 서버 세션만 지우고 현재 화면에 결과를 남긴다(로그아웃은 router.refresh()로 반영된다).
+      setMessage("로그아웃되었습니다.");
+    } catch {
+      setMessage("로그아웃에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
   const { theme, setTheme, resolvedTheme } = useTheme();
 
   const [showDeleteDataModal, setShowDeleteDataModal] = useState(false);
@@ -29,16 +45,6 @@ export function SettingsContent() {
       setMessage("건강 기록 삭제에 실패했습니다.");
     } finally {
       setIsDeleting(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      setIsLoggingOut(true);
-      await logout();
-      router.push("/");
-    } finally {
-      setIsLoggingOut(false);
     }
   };
 
@@ -131,29 +137,39 @@ export function SettingsContent() {
           </div>
         </section>
 
-        {/* 계정 종료: 공용 기기에서 다른 사람이 내 계정으로 들어오지 못하도록 반드시 제공되어야 한다. */}
-        <section className="settings-section" data-testid="account-session-section">
-          <h3 className="settings-section-title">계정</h3>
-          <div className="danger-actions-list">
-            <div className="danger-action-row">
-              <div className="danger-action-info">
-                <h4 className="danger-action-name">로그아웃</h4>
-                <p className="danger-action-desc">
-                  이 기기에서 로그인만 해제합니다. 기록은 그대로 유지됩니다.
-                </p>
+        {/* 계정 종료: 공용 기기에서 다른 사람이 내 계정으로 들어오지 못하도록 반드시 제공되어야 한다.
+            로그인하지 않은 상태(익명/데모)에 두면 눌러도 아무 변화가 없어 고장처럼 보이므로 감춘다. */}
+        {isAuthenticated ? (
+          <section className="settings-section" data-testid="account-session-section">
+            <h3 className="settings-section-title">계정</h3>
+            <div className="danger-actions-list">
+              <div className="danger-action-row">
+                <div className="danger-action-info">
+                  <h4 className="danger-action-name">로그아웃</h4>
+                  <p className="danger-action-desc">
+                    이 기기에서 로그인만 해제합니다. 기록은 그대로 유지됩니다.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
+                  data-testid="logout-btn"
+                >
+                  {isLoggingOut ? "로그아웃 중..." : "로그아웃"}
+                </button>
               </div>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-                data-testid="logout-btn"
-              >
-                로그아웃
-              </button>
             </div>
-          </div>
-        </section>
+          </section>
+        ) : (
+          <section className="settings-section" data-testid="account-session-section">
+            <h3 className="settings-section-title">계정</h3>
+            <p className="settings-section-desc" data-testid="account-session-empty">
+              현재 로그인한 계정이 없습니다. 로그인하면 이 자리에서 로그아웃할 수 있습니다.
+            </p>
+          </section>
+        )}
 
         {/* F-702 & F-703: Dangerous Data Deletion Actions */}
         <section className="settings-section settings-section--danger" data-testid="danger-settings-section">
