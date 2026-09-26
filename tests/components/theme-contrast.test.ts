@@ -3,6 +3,7 @@ import path from "node:path";
 
 const ROOT = path.resolve(__dirname, "../..");
 const css = readFileSync(path.join(ROOT, "src/app/globals.css"), "utf8");
+const loginModal = readFileSync(path.join(ROOT, "src/components/auth/LoginModal.tsx"), "utf8");
 
 function luminance(hex: string): number {
   const value = hex.replace("#", "");
@@ -83,6 +84,18 @@ describe("I6-608 다크모드 대비", () => {
     // 흐림을 너무 주면 브랜드 버튼처럼 보이지 않는다.
     const opacity = Number(disabled.match(/opacity:\s*([\d.]+)/)?.[1] ?? "0");
     expect(opacity).toBeGreaterThanOrEqual(0.8);
+  });
+
+  it("로그인 버튼 아이콘은 브랜드 공식 마크를 유지한다", () => {
+    const googleIcon = loginModal.match(/viewBox="0 0 256 262"[\s\S]*?<\/svg>/)?.[0] ?? "";
+    const kakaoIcon = loginModal.match(/viewBox="0 0 24 24"[\s\S]*?fill="#191919"[\s\S]*?<\/svg>/)?.[0] ?? "";
+
+    // Google: 4색 G는 4개 path(파랑/초록/노랑/빨강)를 모두 써야 한다. 하나라도 빠지면 단색/깨진 로고가 된다.
+    const googleFills = [...googleIcon.matchAll(/fill="(#[0-9A-Fa-f]{6})"/g)].map((m) => m[1].toUpperCase());
+    expect(googleFills).toEqual(["#4285F4", "#34A853", "#FBBC05", "#EB4335"]);
+
+    // Kakao: 브랜드 노랑 배경 위 검정 단일 마크
+    expect(kakaoIcon).toContain('fill="#191919"');
   });
 
   it(".btn-danger은 solid 토큰을 배경으로 사용한다", () => {
