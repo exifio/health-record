@@ -88,14 +88,17 @@ describe("I6-608 다크모드 대비", () => {
 
   it("로그인 버튼 아이콘은 브랜드 공식 마크를 유지한다", () => {
     const googleIcon = loginModal.match(/viewBox="0 0 256 262"[\s\S]*?<\/svg>/)?.[0] ?? "";
-    const kakaoIcon = loginModal.match(/viewBox="0 0 24 24"[\s\S]*?fill="#191919"[\s\S]*?<\/svg>/)?.[0] ?? "";
+    // Kakao: 말풍선 마크(사용자 제공 이미지에서 추적한 벡터). 브랜드 노랑 배경 위 검정 단일 path.
+    const kakaoIcon = loginModal.match(/viewBox="0 0 42\.67 38\.17"[\s\S]*?<\/svg>/)?.[0] ?? "";
 
     // Google: 4색 G는 4개 path(파랑/초록/노랑/빨강)를 모두 써야 한다. 하나라도 빠지면 단색/깨진 로고가 된다.
     const googleFills = [...googleIcon.matchAll(/fill="(#[0-9A-Fa-f]{6})"/g)].map((m) => m[1].toUpperCase());
     expect(googleFills).toEqual(["#4285F4", "#34A853", "#FBBC05", "#EB4335"]);
 
-    // Kakao: 브랜드 노랑 배경 위 검정 단일 마크
     expect(kakaoIcon).toContain('fill="#191919"');
+    // 닫힌 단일 path여야 한다 (여러 조각으로 쪼개지면 말풍선 윤곽이 깨진다).
+    expect([...kakaoIcon.matchAll(/<path/g)]).toHaveLength(1);
+    expect(kakaoIcon).toMatch(/d="[^"]*Z"/);
   });
 
   it(".btn-danger은 solid 토큰을 배경으로 사용한다", () => {
