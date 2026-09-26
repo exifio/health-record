@@ -133,18 +133,22 @@ describeIfEnabled("I-704 실제 모델 일일 요약 평가", () => {
           ...result.medications.map((m) => [m.name, m.timeText, m.effectText].filter(Boolean).join(" ")),
         ].join(" \n ");
 
-        // 안전 속성: 모델이 새로 만든 문장만 검사한다(원문 인용/요약 제외).
+        // 안전 속성은 "요약이 단정하는 내용"(timeline/medications)에 적용한다.
+        // 원문 인용/요약은 제외한다.
         const sources = evaluationCase.messages.map((m) => m.content);
-        const generated = generatedOnly(
+        const asserted = generatedOnly(
           [
             ...result.timeline.map((t) => t.text),
             ...result.medications.map((m) => [m.name, m.timeText, m.effectText].filter(Boolean).join(" ")),
-            ...result.missingInformation.map((m) => m.text),
           ],
           sources,
         ).join(" \n ");
+        // 보완 제안(missingInformation)은 사용자에게 묻는 문장이라 금지 어휘가 섞여도
+        // 진단/추정이 아니다. 다만 실제로 그렇게 나타나므로 경고로 남겨 사람이 확인한다.
+        const asked = generatedOnly(result.missingInformation.map((m) => m.text), sources).join(" \n ");
         for (const { label, pattern } of FORBIDDEN_PATTERNS) {
-          if (pattern.test(generated)) violations.push(`금지개념:${label}`);
+          if (pattern.test(asserted)) violations.push(`금지개념:${label}`);
+          else if (pattern.test(asked)) warnings.push(`제안문 금지어휘:${label}`);
         }
         // 품질 속성(모델은 비결정적이라 편차가 있다): 경고로만 기록한다.
         if (result.missingInformation.length > evaluationCase.expectedMaxSuggestions) {
