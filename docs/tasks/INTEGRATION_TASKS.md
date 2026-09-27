@@ -342,20 +342,22 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 - [x] **I-713** 삭제 확인 전체 흐름 검증
 - [x] **I-714** 개인정보/AI 처리 안내 문구 — **완료(2026-09-27).** 고지 문구 승인 + OpenAI 정책 근거 확인(v1→v2 재동의 실사용자 검증) + 서버 측 기록 작성 강제(B10/B11)까지 마감
 - [x] **I-715** Production 환경변수 — 7/7 등록, `OPENAI_API_KEY` Production 등록 확인(값 비노출)
-- [!] **I-716** 배포 준비 완료 표시 — Production 실제 Google OAuth→v2 동의 저장→기록 생성 smoke와 테스트 데이터 정리를 2026-09-27에 확인했다. I-718 Auth 포함 복구 검증, email/password 회원가입 정책, 실제 백업 보존 정책 결정이 남아 있어 완료 표시하지 않음
+- [x] **I-716** Vercel Production 배포 및 실제 계정 smoke — Google OAuth→v2 동의 저장→기록 생성과 테스트 데이터 정리를 2026-09-27에 확인했다. Vercel 배포 범위는 완료. 백업 복구와 email/password 회원가입 정책은 별도 전체 출시 작업이다.
 - [x] **I-717** B-613 rate limit — Firewall 활성화와 12개 유효 규칙, 실제 429 및 본문을 확인함 (`docs/SECURITY.md` 10절)
-- [~] **I-718** Supabase Free 백업 — 저장소 자동화와 Auth-aware 복구 스크립트 구현; R2/DB 자격 증명과 운영 복구 리허설 대기
+- [~] **I-718** Supabase Free 백업 — Vercel Blob 비공개 저장소(`icn1`, 서울)와 30일 보존을 승인받아 구현했다. GitHub Actions Blob secret은 등록했다. Supabase DB 접속 secret 등록·실제 암호화 백업 업로드·별도 Free 프로젝트 복구 리허설이 남았다. Vercel Production 배포와 별개다.
 
 ### I-718 진행 기록 (2026-09-27)
 
 - `scripts/backup/supabase-backup.sh`가 PostgreSQL 17 `pg_dump` 한 번으로 `public.*`, `auth.users`, `auth.identities`의 일관된 데이터 snapshot을 만든다. Auth session/refresh token 등은 백업하지 않아 복구 뒤 사용자가 다시 로그인해야 한다.
 - archive manifest에 schema migrations를 제공하는 Git commit SHA를 기록한다. 복구 스크립트는 그 commit checkout과 빈 복구 프로젝트를 확인한 뒤, 해당 migrations를 새 Supabase 프로젝트에 적용하고 data를 불러온다. RLS 6개 테이블, Auth 생성 trigger, retry RPC, Auth FK 참조를 검증한다.
-- `.github/workflows/supabase-backup.yml`은 매일 18:00 UTC(한국 03:00)에 실행되며 `SUPABASE_BACKUP_ENABLED=true`일 때만 schedule을 활성화한다. 수동 실행도 같은 변수가 `true`가 아니면 dump·upload·30일 삭제 전에 실패한다. GitHub Actions에는 `contents: read`만 부여하고, R2에는 age 암호화된 파일만 전송한다.
-- 매일 업로드가 확인된 다음, 전용 key prefix의 백업만 30일보다 오래된 순서로 삭제한다. workflow artifact나 공개 repository에는 dump를 저장하지 않는다.
+- `.github/workflows/supabase-backup.yml`은 매일 18:00 UTC(한국 03:00)에 실행되며 `SUPABASE_BACKUP_ENABLED=true`일 때만 schedule을 활성화한다. 수동 실행도 같은 변수가 `true`가 아니면 dump·upload·30일 삭제 전에 실패한다. GitHub Actions에는 `contents: read`만 부여하고, age로 암호화된 파일만 Vercel Blob 비공개 저장소에 전송한다.
+- 새 암호화 백업의 업로드와 크기를 확인한 뒤 전용 pathname 규칙에 해당하는 백업 중 30일이 지난 항목만 삭제한다. workflow artifact나 공개 repository에는 dump를 저장하지 않는다.
 - age 개인 키는 로컬 `~/.config/health-record/backup-age-identity.txt`에 권한 `600`으로 생성했고, 공개 수신자 `AGE_RECIPIENT`만 GitHub repository variable에 등록했다. 개인 키는 GitHub에 두지 않는다.
-- 2026-09-27 재확인: GitHub Actions repository secrets는 0건이고 repository variable은 `AGE_RECIPIENT`만 있다. DB 접속 URL, R2 자격 증명, `SUPABASE_BACKUP_ENABLED`는 등록되지 않았다.
+- **사용자 결정(2026-09-27):** Cloudflare는 사용하지 않는다. Vercel Blob private store `health-record-supabase-backups`, region `icn1`(서울), 30일 보존을 승인했다. store는 생성됐고 private 설정이다. `BLOB_READ_WRITE_TOKEN`은 GitHub Actions repository secret에 등록하고 Vercel Preview 환경변수에서는 제거했다. Vercel Production 환경에는 넣지 않았다. 개인정보 안내 문구 변경은 사용자가 별도 검토하기로 한 범위라 아직 수정하지 않았다.
+- GitHub repository variable `AGE_RECIPIENT`는 이미 등록돼 있다. 현재 없는 운영 값은 `SUPABASE_DB_URL` secret과 `SUPABASE_BACKUP_ENABLED=true` variable이다. DB 연결 URL은 저장소에 기록하지 않는다.
+- Vercel Blob은 사용량 기반으로 청구되며 플랜별 포함량을 넘으면 비용이 발생할 수 있다. 실제 덤프 크기를 확인한 뒤 Vercel usage에서 확인한다([Vercel Blob 가격](https://vercel.com/docs/vercel-blob/usage-and-pricing)).
 - synthetic PostgreSQL source/restore rehearsal에서 `auth.users`, `auth.identities`, profile, daily record, message, summary, suggestion, correction 데이터를 같은 dump로 복원했다. 복원 후 Auth 트리거가 중복 profile을 만들지 않는 것도 확인했다.
-- **남은 운영 gate:** `SUPABASE_DB_URL`, 비공개 R2 bucket, `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, 그리고 `SUPABASE_BACKUP_ENABLED=true`가 필요하다. 저장 위치·국외 이전과 30일 보존 승인 전에는 R2 bucket 생성이나 자동 삭제를 활성화하지 않는다. 현재 DB URL과 R2 계정/자격 증명은 이 세션에 없어 Production upload와 새 Supabase Free 프로젝트 복구 리허설은 수행하지 않았다. 따라서 I-718은 완료 처리하지 않는다.
+- **남은 운영 gate:** GitHub Actions `SUPABASE_DB_URL` secret을 등록하고 코드가 `main`에 반영된 뒤 `SUPABASE_BACKUP_ENABLED=true`를 설정한다. 이후 Production 암호화 백업 1건 업로드·목록 확인, 새 빈 Supabase Free 프로젝트로 복구해 Auth 사용자·앱 데이터·RLS·trigger를 검증한다. 현재 DB URL secret이 없어 Production dump는 시작하지 않았다. 개인정보 안내에 30일 보존과 저장 위치를 반영하는 작업은 별도 보류다. 따라서 I-718은 완료 처리하지 않는다. 이 작업은 Vercel 배포에 필요하지 않다.
 
 ### I-716 배포 확인 (2026-09-27)
 
@@ -370,7 +372,7 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 - Production 동의 화면에서 필수 체크와 저장을 진행했다. 이후 `/api/profile`이 `consentVersion: 2026-09-27-v2`를 반환했다.
 - 오늘 기록 화면에서 실제 건강 상태가 아닌 고유 테스트 문구를 입력해 메시지 저장을 확인했다. 상세 조회는 200, 기록은 `draft`, revision 1, 테스트 메시지 1개였다.
 - 해당 메시지 ID만 DELETE해 204를 확인했다. 정리 후 오늘 목록은 0건, 상세 조회는 404였고, 프로필의 동의 버전은 v2로 유지됐다. 계정 이메일과 테스트 문구 원문은 저장소 문서에 기록하지 않았다.
-- **I-716은 계속 `[!]`다.** OAuth·동의·기록 실제 흐름은 통과했지만 I-718 Auth 포함 복구 리허설, email/password 회원가입 정책, 실제 백업 보존 정책 결정이 남아 있다.
+- **Vercel 배포 범위의 I-716은 완료다.** 실제 OAuth·동의·기록 흐름을 통과했다. I-718 백업 복구와 email/password 회원가입 정책은 별도의 전체 출시 판단으로 남아 있다.
 
 ### 남은 3건 처리 결과 (2026-09-26 당시 기록)
 

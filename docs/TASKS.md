@@ -68,8 +68,9 @@
 | 공통 기반 | 완료 | 이 문서의 `0. 공통 선행 작업` |
 | 프론트엔드 | 완료 | `docs/tasks/FRONTEND_TASKS.md` |
 | 백엔드 | 완료 | `docs/tasks/BACKEND_TASKS.md` |
-| 통합 | 진행 (I-716 실제 OAuth→동의→기록 smoke 통과; I-718 R2/DB 설정 및 운영 복구 리허설 대기) | `docs/tasks/INTEGRATION_TASKS.md` |
-| 최종 QA / 배포 | 보류 (실제 계정 흐름 smoke 통과; Auth 포함 복구, 회원가입 정책, 백업 운영 정책 결정 대기) | `docs/tasks/INTEGRATION_TASKS.md` |
+| 통합 | 진행 (Vercel 배포 및 실제 OAuth→동의→기록 smoke 완료; I-718은 Vercel Blob 비공개 서울 저장소·30일 보존 승인, 운영 백업·복구 검증 대기) | `docs/tasks/INTEGRATION_TASKS.md` |
+| Vercel Production 배포 | 완료 (실제 계정 흐름 smoke 통과) | `docs/tasks/INTEGRATION_TASKS.md` |
+| 최종 QA / 전체 출시 | 보류 (email/password 회원가입 정책, I-718 운영 백업·복구 리허설, 백업 보존 고지 반영 대기) | `docs/tasks/INTEGRATION_TASKS.md` |
 
 상태는 각 상세 TASK 문서의 실제 진행 상황에 맞춰 갱신합니다.
 
