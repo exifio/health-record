@@ -1,13 +1,19 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { AppError, errorResponse } from "@/server/errors/app-error";
+import { sanitizeNextPath } from "@/server/auth/redirects";
 
 export async function GET(request: Request): Promise<Response> {
   try {
-    const callbackUrl = new URL("/api/auth/callback", request.url).toString();
+    // `next`는 사용자 입력이다. callback URL에 심어 OAuth로 전달하고,
+    // 실제로 redirect할 때 다시 allowlist로 검증한다.
+    const next = sanitizeNextPath(new URL(request.url).searchParams.get("next"));
+    const callbackUrl = new URL("/api/auth/callback", request.url);
+    callbackUrl.searchParams.set("next", next);
+
     const supabase = await createServerClient();
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: callbackUrl },
+      options: { redirectTo: callbackUrl.toString() },
     });
 
     if (error || !data.url) {

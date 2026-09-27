@@ -77,7 +77,7 @@ describe("B6 deletion services", () => {
     expect(supabase.events).toHaveLength(1);
   });
 
-  it("clears the current session and returns a safe error when Auth deletion needs retry", async () => {
+  it("keeps the session when Auth deletion fails (no half sign-out)", async () => {
     const supabase = makeSessionClient();
     const admin = makeAdminClient({ message: "private Auth detail" }, supabase.events);
     const log = jest.spyOn(console, "error").mockImplementation(() => undefined);
@@ -88,8 +88,8 @@ describe("B6 deletion services", () => {
       expect(supabase.events).toEqual([
         "rpc:delete_account_data:{}",
         `deleteUser:${USER}`,
-        "signOut:local",
       ]);
+      // Auth 삭제가 실패했는데 signOut부터 하면 반쪽삭 제가 된다.
       expect(log).toHaveBeenCalledWith("account_delete_auth_failed");
       expect(JSON.stringify(log.mock.calls)).not.toContain("private Auth detail");
     } finally {

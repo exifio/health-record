@@ -340,9 +340,9 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 - [x] **I-711** 정정 기록 전체 흐름 검증
 - [x] **I-712** 진료 준비 전체 흐름 검증
 - [x] **I-713** 삭제 확인 전체 흐름 검증
-- [!] **I-714** 개인정보/AI 처리 안내 문구 — Supabase Free 백업 권고안은 기록했으며, 저장 지역·보존 기간, 동의 방식 및 최종 문구 승인은 사용자 결정 대기
+- [x] **I-714** 개인정보/AI 처리 안내 문구 — **완료(2026-09-27).** 고지 문구 승인 + OpenAI 정책 근거 확인(v1→v2 재동의 실사용자 검증) + 서버 측 기록 작성 강제(B10/B11)까지 마감
 - [x] **I-715** Production 환경변수 — 7/7 등록, `OPENAI_API_KEY` Production 등록 확인(값 비노출)
-- [!] **I-716** 배포 준비 완료 표시 — Production 배포·환경변수·Cron·rate limit은 확인됐으나 I-714 개인정보/동의 결정과 I-718 Auth 포함 복구 검증 전이라 출시 준비 완료로 표시하지 않음
+- [!] **I-716** 배포 준비 완료 표시 — Vercel 배포·환경변수·Cron·rate limit은 확인됐지만 현재 Production은 동의 UI가 추가되기 전 revision이다. DB에는 B11(v2)이 적용되어 있으나 `/onboarding/health-consent`는 Production에서 404이므로 앱 배포와 실제 로그인→동의→기록 저장 흐름 검증이 필요하다. I-718 Auth 포함 복구 검증, email/password 회원가입, 실제 백업 보존 정책 결정도 남아 있어 완료 표시하지 않음
 - [x] **I-717** B-613 rate limit — Firewall 활성화와 12개 유효 규칙, 실제 429 및 본문을 확인함 (`docs/SECURITY.md` 10절)
 - [~] **I-718** Supabase Free 백업 — 저장소 자동화와 Auth-aware 복구 스크립트 구현; R2/DB 자격 증명과 운영 복구 리허설 대기
 
@@ -350,15 +350,16 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 
 - `scripts/backup/supabase-backup.sh`가 PostgreSQL 17 `pg_dump` 한 번으로 `public.*`, `auth.users`, `auth.identities`의 일관된 데이터 snapshot을 만든다. Auth session/refresh token 등은 백업하지 않아 복구 뒤 사용자가 다시 로그인해야 한다.
 - archive manifest에 schema migrations를 제공하는 Git commit SHA를 기록한다. 복구 스크립트는 그 commit checkout과 빈 복구 프로젝트를 확인한 뒤, 해당 migrations를 새 Supabase 프로젝트에 적용하고 data를 불러온다. RLS 6개 테이블, Auth 생성 trigger, retry RPC, Auth FK 참조를 검증한다.
-- `.github/workflows/supabase-backup.yml`은 매일 18:00 UTC(한국 03:00)에 실행되며 `SUPABASE_BACKUP_ENABLED=true`일 때만 schedule을 활성화한다. 수동 실행은 항상 설정 검사를 한다. GitHub Actions에는 `contents: read`만 부여하고, R2에는 age 암호화된 파일만 전송한다.
+- `.github/workflows/supabase-backup.yml`은 매일 18:00 UTC(한국 03:00)에 실행되며 `SUPABASE_BACKUP_ENABLED=true`일 때만 schedule을 활성화한다. 수동 실행도 같은 변수가 `true`가 아니면 dump·upload·30일 삭제 전에 실패한다. GitHub Actions에는 `contents: read`만 부여하고, R2에는 age 암호화된 파일만 전송한다.
 - 매일 업로드가 확인된 다음, 전용 key prefix의 백업만 30일보다 오래된 순서로 삭제한다. workflow artifact나 공개 repository에는 dump를 저장하지 않는다.
 - age 개인 키는 로컬 `~/.config/health-record/backup-age-identity.txt`에 권한 `600`으로 생성했고, 공개 수신자 `AGE_RECIPIENT`만 GitHub repository variable에 등록했다. 개인 키는 GitHub에 두지 않는다.
 - synthetic PostgreSQL source/restore rehearsal에서 `auth.users`, `auth.identities`, profile, daily record, message, summary, suggestion, correction 데이터를 같은 dump로 복원했다. 복원 후 Auth 트리거가 중복 profile을 만들지 않는 것도 확인했다.
-- **남은 운영 gate:** `SUPABASE_DB_URL`, 비공개 R2 bucket, `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, 그리고 `SUPABASE_BACKUP_ENABLED=true`가 필요하다. 현재 DB URL과 R2 계정/자격 증명은 이 세션에 없어 Production upload와 새 Supabase Free 프로젝트 복구 리허설은 수행하지 않았다. 따라서 I-718은 완료 처리하지 않는다.
+- **남은 운영 gate:** `SUPABASE_DB_URL`, 비공개 R2 bucket, `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, 그리고 `SUPABASE_BACKUP_ENABLED=true`가 필요하다. 저장 위치·국외 이전과 30일 보존 승인 전에는 R2 bucket 생성이나 자동 삭제를 활성화하지 않는다. 현재 DB URL과 R2 계정/자격 증명은 이 세션에 없어 Production upload와 새 Supabase Free 프로젝트 복구 리허설은 수행하지 않았다. 따라서 I-718은 완료 처리하지 않는다.
 
 ### 남은 3건 처리 결과 (2026-09-26 당시 기록)
 
 ※ 아래는 2026-09-26 시점의 기록이다. 현재 Vercel/Supabase 상태는 뒤의 **2026-09-27 실계정 후속 점검**을 기준으로 한다.
+※ 아래 동의 구현 보류 문구도 당시 스냅샷이며, 이후 상태는 이 문서의 I-714 진행 기록을 따른다.
 
 **I-714 — 결락 고지 2건을 UI에 반영했다.**
 - AI 정리를 위해 기록이 OpenAI로 전송된다는 사실을 고지에 추가했다(앱이 실제로 전송하므로 필수).
@@ -391,7 +392,7 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
   - 반면 앱이 쓰는 6개 테이블(`profiles`/`daily_records`/`record_messages`/`daily_summaries`/`record_suggestions`/`corrections`)은 모두 200으로 확인했다.
   - `supabase/migrations/`에도 이 테이블을 만드는 마이그레이션이 없다. 따라서 **파괴적 drop 마이그레이션을 추가하지 않았다.** advisor 경고가 남는다면 다른 원인이므로, 배포 전 Supabase Dashboard → Advisors에서 실제 항목을 다시 확인해야 한다(CLI/Dashboard 접근 없이 advisor 목록은 조회 불가).
 
-**남은 항목은 사람이 처리해야 하는 3건이다(코드 작업 없음).**
+**당시 미결 항목 (2026-09-27 재확인 시점, 이후 갱신됨):** 아래 동의/UI 대기 내용은 I-714 진행 기록으로 종결·갱신됐다.
 
 1. **I-714 문구 승인** — UI 반영은 끝났으므로 사람이 읽고 승인하면 된다. 백업 보존 기간 숫자는 운영 확인 전까지 넣지 않는다.
 2. **동의 화면** — 구현에 없다(코드 전체에 동의 화면/컴포넌트 0건). `profiles.consent_version`/`consented_at` 컬럼은 B0에서 "PRD 9.3 결정 전까지 보존"으로 남겨뒀다. 첫 로그인 동의 화면과 약관 페이지는 AGENTS §3(범위 확장 금지)과 PRD 9.3이 충돌하므로 **임의 구현하지 않고 결정만 남긴다.**
@@ -401,7 +402,9 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 
 **이번 세션의 코드 변경:** `src/mocks/health-api.ts`의 `retrySummary` 정합 + 회귀 테스트 7건(I4 인수인계 마지막 항목). 그 외 미커밋 변경은 2026-09-27 F1 작업분이다.
 
-### 2026-09-27 실계정 후속 점검 — 현재 상태
+### 2026-09-27 실계정 후속 점검 — 당시 확인 내용
+
+※ 이 시점 뒤에 동의 구현과 Production 배포 상태가 다시 바뀌었다. 현재 상태는 상단 I-716/I-718 체크리스트와 이후 I-714 진행 기록을 기준으로 한다.
 
 - **I-714 / 개인정보 및 백업:** 사용자는 Supabase Free 유지를 선택했다. 현재 공식 문서상 Free에는 포함된 자동 백업과 대시보드 다운로드가 없으며, 별도 FAQ는 Free 프로젝트에도 현재 최대 7개의 일일 백업이 생성되어 유료 플랜으로 올린 뒤 제공될 수 있지만 향후 중단될 수 있다고 안내한다. Supabase는 Free 프로젝트에 정기 `db dump`와 off-site 백업을 권한다. 이 프로젝트의 실제 백업 존재/보존은 확인하지 않았고 별도 백업 대상도 정하지 않았다. 따라서 UI 문구 최종 승인, 실제 복구 경로/보존 정책 결정, PRD 9-3 동의 방식 결정이 남아 있어 기간 숫자를 추가하지 않았다([백업 안내](https://supabase.com/docs/guides/platform/backups), [Free 프로젝트 FAQ](https://supabase.com/docs/guides/troubleshooting/will-backups-be-accessible-from-the-dashboard-immediately-after-upgrading-to-a-paid-plan-hXY4rs)).
 - **Supabase Free 백업 권장안 (제안, 미적용):** Free를 유지하면서 매일 GitHub Actions가 DB 백업을 생성하고, 클라이언트 측 암호화 후 별도 비공개 object storage로 직접 업로드한다. 후보는 Cloudflare R2 Standard다(현재 월 10 GB-month 무료 범위, 초과 시 종량 과금; [가격](https://developers.cloudflare.com/r2/pricing/)). R2의 APAC 위치 힌트는 최선 노력일 뿐 보장된 데이터 지역이 아니며, 보장된 jurisdiction 목록에 한국은 없다([데이터 위치](https://developers.cloudflare.com/r2/reference/data-location/)). 저장 사업자/위치에 대한 개인정보·국외 이전 검토 전에는 버킷을 만들지 않는다. 보존 기간은 **초기 권고 30일**이며, 사용자가 승인하기 전에는 lifecycle 삭제 규칙과 개인정보 문구에 반영하지 않는다. 이 기간에는 앱에서 삭제한 데이터 사본도 백업 만료까지 남을 수 있다. 백업이 매일 정상 완료된다는 전제에서 복구 지점은 최대 약 24시간 전까지다.
@@ -410,7 +413,7 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 - **인증 보안:** 원격 Auth 설정은 email과 Google이 모두 켜져 있고 `disable_signup=false`다. `auth_leaked_password_protection` Advisor 경고가 남아 있으며 현재 Free 플랜에서는 해당 보호 설정을 사용할 수 없다([Supabase 문서](https://supabase.com/docs/guides/auth/password-security)). 인증 제공자를 변경하거나 유료 플랜으로 올리지는 않았다. Advisor의 `SECURITY DEFINER` 경고 10건은 함수별로 확인했다: 전부 빈 `search_path`, `auth.uid()` 검증, authenticated 실행 허용, anon 실행 거부가 적용돼 있다. Performance Advisor 경고는 없었다.
 - **I-715 / Vercel Production:** Production 변수 7개를 등록했다: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_USE_MOCK=false`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `CRON_SECRET`. `OPENAI_API_KEY`는 Production 대상의 sensitive 변수로 존재하며 값은 읽거나 출력하지 않았다. 배포 `health-record-nou1g1j12-exifio-4593s-projects.vercel.app`은 `READY`/Production이다. `vercel crons list`에서 `/api/internal/daily-summary/run`의 `0 * * * *` 등록을 확인했고, Production runtime log에 18:00:02 UTC의 GET 200이 있다. 시각은 Cron 일정과 일치하지만 응답 내용/처리 건수는 읽지 않았으며, 기록 요약 생성 자체를 검증한 것은 아니다.
 - **I-717 / Firewall:** 처음 조회했을 때 12개 rate-limit 규칙은 active/valid였지만 프로젝트의 `firewallEnabled`가 `false`라 실제 적용되지 않았다. 기존 규칙·조건·값을 보존해 Firewall만 켰고, Vercel overview에서 `Enabled`, 12 active 규칙을 다시 확인했다. 내부 스케줄러 GET을 같은 60초 동안 5회 호출한 결과 1~4회는 앱의 무인증 `403`, 5회째는 WAF `429`였다. 429 본문은 비어 있지 않은 75바이트 `text/plain`이며 검사한 health 관련 문자열은 없었다. 4회/분 내부 규칙은 실측했고, 나머지 11개 한도는 실제로 초과 호출하지 않고 active/valid 설정만 확인했다. 카운터는 region별이어서 전역 quota가 아니다(`docs/SECURITY.md` 10절).
-- **배포 게이트:** 배포 `READY`, 7개 환경변수, 시간대에 맞는 scheduler GET 200, WAF 429는 확인했다. 아직 개인정보 문구의 사용자 승인, Supabase Free용 별도 백업·복구 및 실제 보존 정책, PRD 9-3 동의 방식/구현, 한국 대상 국외 이전 안내 판단이 남아 있다. 현재 email과 Google Auth가 켜져 있고 signup도 허용되어 있으며, Supabase Free에서는 유출 비밀번호 보호를 사용할 수 없다. 이 인증 구성을 유지할지 포함해 사람이 결정하기 전에는 I-716을 완료하거나 출시 준비 완료로 표시하지 않는다.
+- **배포 게이트(실계정 재확인 당시):** 배포 `READY`, 7개 환경변수, scheduler GET 200, WAF 429를 확인했지만 당시에는 I-714 문구·동의 흐름·백업 복구와 인증 구성이 결정 대기였다. 이후 I-714 진행 기록에서 고지와 동의 흐름을 마감했다. 현재 남은 조건은 상단 I-716 상태와 I-718 운영 gate를 따른다. email/password 회원가입 유지 여부와 R2 위치·보존 정책 결정은 여전히 대기 중이다.
 
 ### I7 진행 기록 (2026-09-26)
 
@@ -461,6 +464,59 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
   2. 이 로컬 환경은 `OPENAI_BASE_URL`로 8787 포트의 로컬 AI 릴레이를 쓰고 있다. Vercel에는 이 값을 넣지 않으면 기본 `api.openai.com`으로 나간다.
   3. 스케줄러 cron이 없다. `vercel.json`에 `POST /api/internal/daily-summary/run` 호출을 등록해야 자동 요약이 돈다(I-305에서 수동 호출로만 확인).
      - **→ 2026-09-27 정정:** 이미 등록되어 있다(커밋 `b80ff4a`). Vercel Cron은 GET으로 호출하고 `CRON_SECRET`이 설정돼 있으면 `Authorization: Bearer $CRON_SECRET`를 붙이므로, route의 GET/POST 분기(`src/app/api/internal/daily-summary/run/route.ts`)가 이 형식에 맞춰져 있다. 남은 건 배포 후 cron이 실제로 한 번 도는지 확인하는 것뿐이다.
+
+### I-714 진행 기록 (2026-09-27) — 민감정보 동의 A안
+
+**진행 결정: 전용 동의 페이지를 기록 시작 시 요구한다.** 초기 결정 기록에는 첫 로그인 온보딩(A안)으로 적었지만, 최종 구현은 로그인·설정 탐색은 유지하고 `requestRecordStart()`에서 동의 상태를 확인한다. 이에 따라 실제 사용자 경로는 첫 기록 작성 시 미동의자를 전용 페이지로 보낸다.
+
+- **마이그레이션 `20260927090000_b9_sensitive_info_consent.sql`.** `profiles`에 `consent_version` text / `consented_at` timestamptz 추가. B0 마이그레이션이 "PRD 9.3 결정 전까지 보존"으로 남겨둔 컬럼이다. RLS·grant는 B0 policies를 그대로 쓴다(신규 컬럼이라 정책 변경 없음). 원격 `health` 프로젝트에 적용했고 `supabase_migrations.schema_migrations`에 11번째로 기록했다.
+- **Contract (`src/contracts`).** `ProfileResponse`가 `consentVersion`을 노출한다. 현재 `CURRENT_CONSENT_VERSION = "2026-09-27-v2"`다 — **고지 문구를 바꾸면 이 값을 새 마이그레이션의 요구 버전과 함께 올려야 하고**, 이미 동의한 계정은 저장된 값과 달라져 자동으로 다시 동의 화면이 뜬다.
+- **`reason` 규칙(오인 방지).** `PATCH /api/profile`는 `consentVersion`을 `reason: "consent"`일 때만 저장한다. reason 없이 보내도 `"onboarding"`으로 보내도 저장되지 않는다. 온보딩 완료가 동의로 오인되면 **고지 없이 민감정보가 나가므로** 강제하는 지점은 서버 한 곳으로 모았다. 실제로 쓸 값이 하나도 없으면 `UPDATE` 자체를 보내지 않는다. `docs/API.md` 15절과 `docs/DATABASE.md` 2절에 반영했다.
+- **UI — 최종형(3차): 로그인 모달(인증) + 전용 동의 페이지(동의).** 같은 날 형태를 세 번 바꿨고, 판단 근거를 남긴다.
+  1. **1차(폐기):** 「건강 기록 시작하기」 단일 모달 2단계. `LoginModal`에 `step` prop을 두고 Google OAuth의 `window.location.replace()` 전체 이동으로 깨진 흐름을 sessionStorage intent로 메웠다. **동의 상태를 클라이언트 storage에 두게 되어** PRD 9-3의 핵심 원칙(서버 DB가 단일 기준)을 약화시킨다고 판단해 폐기. `ConsentStep.tsx`, `StartFlowModal.tsx` 삭제.
+  2. **2차(폐기):** 로그인 모달(인증) + 오늘 기록 화면 인라인 동의 카드. `ConsentCard.tsx`를 만들었다. 오늘 기록이 이미 무거운 화면인데 동의까지 얹히면 기록 기능에 집중하기 어렵고, 요구사항 9(오늘 기록은 기능 중심으로 단순하게)가 충족되지 않았다. 삭제.
+  3. **3차(현재):** 로그인 모달은 **인증만**. 동의는 전용 full page `/onboarding/health-consent`에서 받는다. 오늘 기록에서 인라인 동의 UI를 완전히 제거했다.
+     - **왜 페이지인가:** 모달이 아니므로 주소가 있어 공유·인쇄가 되고 동의 사실을 문서로 남길 수 있다. 모바일에서 중앙 팝업이 아니라 자연스러운 full page onboarding이 되고, 데스크톱은 `max-width: 44rem`으로 본문이 늘어나지 않는다.
+     - **동의는 「기록」을 누른 순간에만 요구한다.** `requestRecordStart()`가 판정한다: 비로그인 → 로그인 모달(기록 시작 플로우 표시) / 로그인+미동의 → 동의 페이지로 `router.push` / 로그인+동의 → 진행.
+     - **단순 로그인으로 자동 이동하지 않는다(요구사항 12).** `openLoginModal`(설정·데모 배너)은 `startFlowNext`를 비우고, `requestRecordStart`만 `CONSENT_PATH`를 채운다. OAuth `next`는 이 값이 있을 때만 붙는다.
+     - **이미 동의한 계정은 재요청하지 않는다** — 재방문·새로고침·재로그인·다른 기기 모두. 서버 DB 값만 본다. 고지 문구를 바꾸려면 `CURRENT_CONSENT_VERSION`과 새 마이그레이션의 SQL 문자열을 **둘 다** 올려야 한다(하나만 올리면 조용히 차단된다 — 테스트로 고정).
+     - **저장 실패 시 이동하지 않는다.** 카드에 오류를 남기고 재시도하게 한다. 실패한 채 이동하면 이력 없는 상태로 기록 화면에 도착한다.
+     - **모바일.** 480px 이하에서 액션 버튼을 세로로 쌓고(`column-reverse`, 주 버튼이 위) 각 44px 터지 확보. 고지 글자 14px.
+- **서버 측 강제 (B10, 10절).** 클라이언트 버튼 비활성화만으로는 API 직접 호출로 우회할 수 있어, **원문을 새로 만드는 함수 안에서** 동의를 확인한다.
+  - 대상은 `create_record_message`(기록 작성)와 `create_record_correction`(정정 추가) 2개. 둘 다 사용자 원문이므로 함께 막는다.
+  - **조회·삭제·수정은 열어 둔다.** 동의 거부 상태에서도 사용자는 자기 데이터를 지울 수 있어야 한다("돌아가기"로 빠져나갈 수 있어야 하므로). 설계 판단이다.
+  - `CONSENT_REQUIRED` → 403으로 매핑하고, 클라이언트는 이 코드로 동의 페이지로 보낸다. 서버가 버전을 모르면 조용히 막힌 것처럼 보이므로, 오류 발생 시 `onboarding/health-consent`으로 보낸다.
+  - **주의(적용 중 발견):** B10 작성 시 `create_record_correction` 정의를 B4에서 복사했다가 **B7이 `security definer` + `auth.uid()` 소유권 검증으로 바꿔둔 것을 놓칠 뻔했다.** 그대로 적용하면 소유권 검증이 사라져 타인 기록에 접근할 수 있었다. 배포 전 DB의 `prosecdef`를 조회해 확인했고, 정의에서 `--` 주석을 제외한 `security definer` 2개 + `auth.uid() 소유권 검증` 2개를 테스트로 고정했다.
+  - 마이그레이션 `20260927110000_b10_enforce_health_consent.sql`, 원격 `health` 프로젝트에 적용(12번째), `schema_migrations` 기록.
+- **OAuth 복귀 (8절).** `next`는 **네비게이션 의도만**이다. 동의 여부·건강 기록은 담지 않는다. `/api/auth/google?next=…` → `redirectTo`에 심어 전달 → `/api/auth/callback`가 allowlist로 최종 검증 후 307. allowlist는 `/onboarding/health-consent` 하나뿐이고, 그 외 값(`https://evil.example`, `//evil.example`, `/settings`, 경로 조작)은 전부 `/today`로 떨어뜨린다. open redirect 회귀 테스트 4건 포함.
+- **회귀 테스트.** `tests/components/consent-flow.test.ts`(22건): 전용 페이지 존재/모달 아님·로그인 모달에 동의 없음·오늘 기록에 동의 UI 0(ConsentCard/canWrite/needsConsent 모두 없음)·기록 시작 시에만 이동·단순 로그인은 이동 안 함·storage에 동의 상태 없음·요구된 제목/설명/항목·상세 페이지 재사용+상세 페이지에 동의 UI 없음·체크 전 disabled+[필수] 표기·"나중에" 없음·저장 실패 시 이동 안 함·이미 동의 재요청 없음·비로그인 직접 URL·B10의 CONSENT_REQUIRED 2개·DB 버전 문자열 = `CURRENT_CONSENT_VERSION`·B9 컬럼 재사용(중복 컬럼 없음)·차단 대상이 삭제 경로를 포함하지 않음·security definer/소유권 검증 유지. `tests/api/google-oauth.test.ts`에 next 전달·allowlist 통과·open redirect 4건 추가. `tests/server/profile-service.test.ts`·`tests/api/profile.test.ts`는 서버 `reason` 규칙, `tests/features/{auth-and-demo,frontend-qa}.test.ts`는 컴포저 가드.
+- **실사용자 검증(테스트 계정).** 미동의 상태로 `POST /api/daily-records/:date/messages` 직접 호출 → **403 `CONSENT_REQUIRED`**, DB에 record/message **0건**(우회 차단 확인) → 동의 저장 200 → 재호출 **201 저장**, `record_messages`에 실제로 들어감 → 테스트 계정 삭제 후 record/message 모두 0건, 기존 실사용자 계정은 미동의 상태 그대로 유지.
+- **Mock 정합.** `updateProfile`이 서버와 같은 `reason` 규칙을 따르고, fixture에 `consentVersion`을 넣었다. 계정 삭제 시 `consentVersion: null`로 되돌린다(AGENTS §9: Mock과 실제 API 형태 일치).
+- **실사용자 검증(테스트 계정).**
+- **회귀 테스트.** `tests/components/consent-flow.test.ts`(신규 10건: 카드 분리·"나중에"로 닫기·체크 전 시작 불가·저장 실패 시 닫지 않음·온보딩≠동의·성공 후에만 인정·재동의 안 뜸·고지 문구·보존 기간 숫자 금지 + Contract 2건), `tests/server/profile-service.test.ts`(동의 저장·reason 없는 consentVersion 무시·`"onboarding"` 무시·빈 patch 무 UPDATE), `tests/api/profile.test.ts`(reason 통과). 기존 profile 테스트는 새 필드에 맞춰 갱신했다.
+- **실사용자 검증(테스트 계정).** 신규 계정 → `GET /api/profile` `{onboardingCompleted:false, consentVersion:null}` → reason 없이 `consentVersion`만 PATCH → **저장되지 않음(null 유지)** → `reason:"consent"`로 PATCH → 200 저장 → 재조회 일치 → DB에서 `consent_version`/`consented_at` 확인. 검증 뒤 테스트 계정은 삭제했다(기존 실사용자 계정은 미동의 상태 그대로 유지).
+
+### I-714 종결 (2026-09-27) — 남은 2건 처리
+
+**① 고지 문구 최종 승인 — 완료(사용자 승인).** 사용자가 2026-09-27에 문구를 승인했다.
+
+**② "학습에 사용되지 않습니다"의 정책 근거 — 확인 완료.** OpenAI 공식 문서로 실측했다. 출처: [Data controls in the OpenAI platform](https://developers.openai.com/api/docs/guides/your-data) (2026-09-27 확인).
+
+| 항목 | 공식 문구 | 이 앱 |
+|---|---|---|
+| API 데이터의 학습 사용 | "data sent to the OpenAI API is **not used to train or improve** OpenAI models (unless you explicitly opt in)" | 해당 |
+| 엔드포인트별 학습 사용 | `/v1/chat/completions` → **No** | `chat.completions.parse`를 쓴다(`src/server/ai/daily-summary.ts`, `suggestions.ts`) |
+| 악용 모니터링 보관 | "retained for **up to 30 days**, unless longer retention is required by law, or is reasonably necessary to protect our services" | 30일 |
+
+→ **문구가 틀리지 않았고, 오히려 불필요하게 모호했다.** "일정 기간"이라고만 적어 검증된 숫자를 놓치고 있었다. 이 저장소 규칙은 "보관 기간 숫자를 **지어내지 않는다**"이므로 출처가 있는 값은 써야 한다. 두 화면(`/settings/privacy`의 AI 처리 섹션, `/onboarding/health-consent`의 보관 항목)에 **"최대 30일까지" + 공식 문서 링크**를 넣었다.
+
+- **동의 버전 v1 → v2.** 문구가 바뀌었으므로 `CURRENT_CONSENT_VERSION`을 올렸다. 이전 문구에 동의한 계정을 새 문구에 동의한 것으로 취급하지 않기 위해서다. DB 쪽은 이미 적용된 마이그레이션을 고치지 않고 **B11**(`20260927120000`)을 새로 추가해 두 함수의 요구 버전을 교체했다. `schema_migrations` 13번째.
+- **재동의가 실제로 동작함을 실사용자 세션으로 검증했다.** v1로 동의한 계정 → 기록 작성 **403 `CONSENT_REQUIRED`**(버전이 달라져 무효) → v2로 재동의 → 기록 작성 **201**. 프로필 판정값도 v2로 전환. 테스트 계정 삭제 후 record/message 0건.
+- **두 값이 어긋나면 사용자가 조용히 차단된다.** 그래서 `tests/components/consent-flow.test.ts`가 "마지막 마이그레이션의 요구 버전 = `CURRENT_CONSENT_VERSION`"을 고정한다. 앞으로 문구를 바꾸면 **① `CURRENT_CONSENT_VERSION` ② 새 마이그레이션으로 DB 요구 버전 교체** 둘 다 해야 한다.
+
+**서버 측 기록 작성 차단 — 넣었다(B10).** 앞서 "별도 결정"으로 남겨 뒀던 것을 이번에 implements 했다. 미동의 계정은 `create_record_message`/`create_record_correction`이 `CONSENT_REQUIRED`로 거절한다. 조회·수정·삭제는 열어 뒀다(동의 거부 상태에서도 자기 데이터를 지울 수 있어야 한다).
+
+**I-714는 `[x]`로 마감한다.**
 
 ### I7에서 고친 결함 2건
 

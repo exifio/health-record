@@ -180,9 +180,21 @@ export const VisitPrepResponseSchema = z.strictObject({
 
 export const ProfileResponseSchema = z.strictObject({
   onboardingCompleted: z.boolean(),
+  // PRD 9-3: 사용자가 동의한 고지 버전. null/미일치면 미동의로 간주한다.
+  consentVersion: z.string().nullable(),
 });
 
-export const UpdateProfileRequestSchema = ProfileResponseSchema;
+/**
+ * 동의 이력 기록 사유. `consent`일 때만 consentVersion을 저장한다.
+ * `onboarding`은 기존 동작(온보딩 완료 표시)이라 동의 상태를 건드리지 않는다.
+ */
+export const ConsentReasonSchema = z.enum(["onboarding", "consent"]);
+
+export const UpdateProfileRequestSchema = z.strictObject({
+  onboardingCompleted: z.boolean().optional(),
+  consentVersion: z.string().optional(),
+  reason: ConsentReasonSchema.optional(),
+});
 
 export const ApiErrorResponseSchema = z.strictObject({
   error: z.strictObject({ code: z.string().min(1), message: z.string() }),
@@ -217,6 +229,18 @@ export type CreateCorrectionResponse = z.infer<typeof CreateCorrectionResponseSc
 export type VisitPrepResponse = z.infer<typeof VisitPrepResponseSchema>;
 export type ProfileResponse = z.infer<typeof ProfileResponseSchema>;
 export type UpdateProfileRequest = z.infer<typeof UpdateProfileRequestSchema>;
+export type ConsentReason = z.infer<typeof ConsentReasonSchema>;
+
+/**
+ * PRD 9-3: 현재 고지 문구 버전. 문구 내용을 바꾸면 이 값을 올려야 한다.
+ * 이미 동의한 계정은 저장된 값과 다르면 미동의로 간주해 동의를 다시 받는다.
+ *
+ * v1 → v2 (2026-09-27): OpenAI 공식 문서로 사실이 확인되어 악용 모니터링 보관 기간을
+ * "일정 기간"에서 "최대 30일"로 구체화하고 출처 링크를 추가했다.
+ * DB의 요구 버전(B10/B11 SQL 문자열)도 같이 올려야 한다 — `tests/components/consent-flow.test.ts`가
+ * 두 값이 같은지 고정한다. 하나만 올리면 사용자가 조용히 차단된다.
+ */
+export const CURRENT_CONSENT_VERSION = "2026-09-27-v2";
 export type ApiErrorResponse = z.infer<typeof ApiErrorResponseSchema>;
 export type SummaryJobResponse = z.infer<typeof SummaryJobResponseSchema>;
 export type Suggestion = z.infer<typeof SuggestionSchema>;

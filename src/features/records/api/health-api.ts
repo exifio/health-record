@@ -85,6 +85,8 @@ export const API_ERROR_CODES = {
   summaryNotReady: "SUMMARY_NOT_READY",
   summaryStale: "SUMMARY_STALE",
   summaryNotRetryable: "SUMMARY_NOT_RETRYABLE",
+  /** PRD 9-3: 미동의 계정이 건강 기록을 추가하려 할 때 서버가 거절한다. */
+  consentRequired: "CONSENT_REQUIRED",
   unauthenticated: "UNAUTHENTICATED",
 } as const;
 

@@ -1,4 +1,5 @@
 import {
+  CURRENT_CONSENT_VERSION,
   DailyRecordListResponseSchema,
   DailyRecordResponseSchema,
   ProfileResponseSchema,
@@ -263,6 +264,7 @@ export const sampleVisitPrepResponse: VisitPrepResponse = VisitPrepResponseSchem
 
 export const sampleProfileResponse: ProfileResponse = ProfileResponseSchema.parse({
   onboardingCompleted: true,
+  consentVersion: CURRENT_CONSENT_VERSION,
 });
 
 export const demoDailyRecordResponse: DailyRecordResponse = DailyRecordResponseSchema.parse({

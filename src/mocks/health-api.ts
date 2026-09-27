@@ -1,6 +1,7 @@
 import { API_ERROR_CODES, HealthApiError } from "@/features/records/api/health-api";
 import {
   ConfirmRecordResponseSchema,
+  CURRENT_CONSENT_VERSION,
   CreateCorrectionRequestSchema,
   CreateCorrectionResponseSchema,
   CreateMessageRequestSchema,
@@ -390,8 +391,17 @@ export function createMockHealthApi(customStore?: Partial<MockStore>): MockHealt
     },
 
     async updateProfile(input: UpdateProfileRequest): Promise<ProfileResponse> {
-      const validInput = UpdateProfileRequestSchema.parse(input);
-      store.profile = { ...store.profile, ...validInput };
+      const { reason, consentVersion, onboardingCompleted } = UpdateProfileRequestSchema.parse(input);
+      // 실제 서버와 같은 규칙: 동의 이력은 reason: "consent"로 명시한 요청만 기록한다.
+      if (onboardingCompleted !== undefined) {
+        store.profile = { ...store.profile, onboardingCompleted };
+      }
+      if (reason === "consent" && consentVersion !== undefined) {
+        if (consentVersion !== CURRENT_CONSENT_VERSION) {
+          throw new HealthApiError("VALIDATION_ERROR", 400, "요청을 확인해주세요.");
+        }
+        store.profile = { ...store.profile, consentVersion };
+      }
       return ProfileResponseSchema.parse(store.profile);
     },
 
@@ -403,7 +413,7 @@ export function createMockHealthApi(customStore?: Partial<MockStore>): MockHealt
     async deleteAccount(): Promise<void> {
       store.records.clear();
       store.confirmedAt.clear();
-      store.profile = { onboardingCompleted: false };
+      store.profile = { onboardingCompleted: false, consentVersion: null };
     },
 
     async runSummaryWorker(): Promise<void> {

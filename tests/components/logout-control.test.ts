@@ -35,6 +35,49 @@ describe("로그아웃 동작 (I7 결함 반영)", () => {
     expect(deleteIndex).toBeGreaterThan(-1);
     expect(logoutIndex).not.toBe(deleteIndex);
   });
+
+  it("계정 삭제는 성공하면 모달을 닫고 홈에서 끝낸다", () => {
+    // 성공: 삭제+로그아웃이 끝난 뒤 모달을 닫고 "?account-deleted=1" 홈으로 보낸다.
+    // 이전처럼 모달을 먼저 닫고 설정 화면에 남기면 로그인 상태 그대로 보여
+    // "아무 일도 안 일어난" 것처럼 보인다.
+    const handlerStart = source.indexOf("const handleDeleteAccount");
+    const handlerEnd = source.indexOf("};", handlerStart);
+    const handler = source.slice(handlerStart, handlerEnd);
+    const deleteIndex = handler.indexOf("await api.deleteAccount();");
+    const logoutIndex = handler.indexOf("await logout();");
+    const closeIndex = handler.indexOf("setShowDeleteAccountModal(false);");
+    const replaceIndex = handler.indexOf('router.replace("/?account-deleted=1");');
+    expect(deleteIndex).toBeGreaterThan(-1);
+    expect(logoutIndex).toBeGreaterThan(deleteIndex);
+    expect(closeIndex).toBeGreaterThan(logoutIndex);
+    expect(replaceIndex).toBeGreaterThan(closeIndex);
+    expect(handler).not.toContain("setShowDeleteAccountModal(true)");
+    expect(handler).not.toContain("isDeleteAccountDone");
+    expect(handler).not.toContain("delete-account-done");
+    // 실패: 모달은 열어 둔 채 모달 안 에러로만 보여 준다(모달 닫고 배너 금지).
+    expect(handler).toContain("setDeleteAccountError");
+    expect(handler).not.toContain('setMessage("계정 삭제에 실패했습니다.');
+    expect(source).toContain('data-testid="delete-account-error"');
+  });
+
+  it("계정 삭제는 홈 완료 배너로 끝낸다 (모달이 refresh에 날아가도 보인다)", () => {
+    const homeSource = readFileSync(join(ROOT, "src/features/home/HomeContent.tsx"), "utf8");
+    // 삭제 성공 후 "?account-deleted=1"로 홈에 오면 배너를 보여 주고 쿼리만 지운다.
+    expect(homeSource).toContain("account-deleted");
+    expect(homeSource).toContain('data-testid="account-deleted-notice"');
+    expect(homeSource).toContain("계정이 삭제되어 로그아웃되었습니다.");
+  });
+
+  it("삭제가 끝나기 전에 로그아웃이 끼어들지 않는다", () => {
+    // handleDeleteAccount 안에서 deleteAccount → logout 순서대로 await 되어야
+    // 로그아웃 refresh가 삭제 완료보다 먼저 도는 경쟁을 막는다.
+    const handlerStart = source.indexOf("const handleDeleteAccount");
+    const handler = source.slice(handlerStart, handlerStart + 800);
+    const deleteIndex = handler.indexOf("await api.deleteAccount();");
+    const logoutIndex = handler.indexOf("await logout();");
+    expect(deleteIndex).toBeGreaterThan(-1);
+    expect(logoutIndex).toBeGreaterThan(deleteIndex);
+  });
 });
 
 describe("데이터 관리 메뉴의 로그인 게이팅 (I7 결함 반영)", () => {

@@ -130,7 +130,7 @@ describe("F1: Login, Demo Mode, Onboarding", () => {
         })
       );
 
-      expect(html).not.toContain("기록 저장은 로그인 후 이용할 수 있습니다.");
+      expect(html).not.toContain('data-testid="composer-auth-hint"');
     });
 
     it("intercepts submission and triggers onRequireAuth when unauthenticated (F-106, F-107)", () => {
@@ -170,6 +170,7 @@ describe("F1: Login, Demo Mode, Onboarding", () => {
   });
 
   describe("OnboardingNotice (F-108)", () => {
+
     it("renders the exact guidance text from DESIGN.md and dismiss button", () => {
       const html = renderToStaticMarkup(
         React.createElement(OnboardingNotice, {

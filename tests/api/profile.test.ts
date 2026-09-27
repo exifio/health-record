@@ -1,4 +1,4 @@
-import { ProfileResponseSchema } from "@/contracts";
+import { CURRENT_CONSENT_VERSION, ProfileResponseSchema } from "@/contracts";
 import { AppError } from "@/server/errors/app-error";
 
 const createServerClientMock = jest.fn();
@@ -51,8 +51,8 @@ describe("profile route", () => {
     jest.clearAllMocks();
     createServerClientMock.mockResolvedValue(SESSION_CLIENT);
     requireUserMock.mockResolvedValue({ id: USER });
-    getProfileMock.mockResolvedValue({ onboardingCompleted: false });
-    updateProfileMock.mockResolvedValue({ onboardingCompleted: true });
+    getProfileMock.mockResolvedValue({ onboardingCompleted: false, consentVersion: null });
+    updateProfileMock.mockResolvedValue({ onboardingCompleted: true, consentVersion: null });
   });
 
   it("returns the authenticated user's profile", async () => {
@@ -60,7 +60,10 @@ describe("profile route", () => {
     const response = await GET();
 
     expect(response.status).toBe(200);
-    expect(ProfileResponseSchema.parse(await response.json())).toEqual({ onboardingCompleted: false });
+    expect(ProfileResponseSchema.parse(await response.json())).toEqual({
+      onboardingCompleted: false,
+      consentVersion: null,
+    });
     expect(getProfileMock).toHaveBeenCalledWith(SESSION_CLIENT, USER);
   });
 
@@ -74,8 +77,46 @@ describe("profile route", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(ProfileResponseSchema.parse(await response.json())).toEqual({ onboardingCompleted: true });
+    expect(ProfileResponseSchema.parse(await response.json())).toEqual({
+      onboardingCompleted: true,
+      consentVersion: null,
+    });
     expect(updateProfileMock).toHaveBeenCalledWith(SESSION_CLIENT, USER, { onboardingCompleted: true });
+  });
+
+  it("passes a consent reason through to the service (PRD 9-3)", async () => {
+    updateProfileMock.mockResolvedValue({ onboardingCompleted: true, consentVersion: CURRENT_CONSENT_VERSION });
+    const { PATCH } = await import("@/app/api/profile/route");
+    const response = await PATCH(
+      new Request("https://health.example/api/profile", {
+        method: "PATCH",
+        body: JSON.stringify({ reason: "consent", consentVersion: CURRENT_CONSENT_VERSION }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(updateProfileMock).toHaveBeenCalledWith(SESSION_CLIENT, USER, {
+      reason: "consent",
+      consentVersion: CURRENT_CONSENT_VERSION,
+    });
+  });
+
+  it("returns 400 when the profile service rejects an outdated consent version", async () => {
+    updateProfileMock.mockRejectedValue(new AppError("VALIDATION_ERROR", "요청을 확인해주세요.", 400));
+    const { PATCH } = await import("@/app/api/profile/route");
+    const response = await PATCH(
+      new Request("https://health.example/api/profile", {
+        method: "PATCH",
+        body: JSON.stringify({ reason: "consent", consentVersion: "2026-09-27-v1" }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.code).toBe("VALIDATION_ERROR");
+    expect(updateProfileMock).toHaveBeenCalledWith(SESSION_CLIENT, USER, {
+      reason: "consent",
+      consentVersion: "2026-09-27-v1",
+    });
   });
 
   it("rejects a malformed body before touching the database", async () => {

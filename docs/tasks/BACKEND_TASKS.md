@@ -43,7 +43,7 @@ Frontend UI와 `src/contracts/**`는 임의로 수정하지 않습니다.
 - Dashboard 및 OAuth 확인: 제공된 Dashboard에서 Site URL과 `http://localhost:3000/api/auth/callback` allowlist, Google Cloud에서 `http://localhost:3000` origin과 Supabase `/auth/v1/callback` redirect URI를 확인했다. 실제 authorize 요청이 해당 Google Client ID를 사용했고 callback 후 보호 API 인증에 성공해 OAuth credential 교환을 확인했다.
 - 프로젝트는 `health-record`가 삭제되고 `health`(ref: `jleboocxejidigclepxt`)로 연결을 변경함.
 - 환경 변수: `.env.local`에 프로젝트 URL, publishable key, `SUPABASE_SERVICE_ROLE_KEY` 기록.
-- `profiles`의 레거시 `timezone` 컬럼은 제거했고, `consent_version`/`consented_at`은 PRD 9.3(동의 고지 방식) 결정 전까지 보존했다.
+- `profiles`의 레거시 `timezone` 컬럼은 제거했고, B0 시점에는 `consent_version`/`consented_at`을 PRD 9.3 결정 전까지 보존했다. **이후 상태:** I-714에서 동의 방식을 결정해 B9/B10/B11과 전용 동의 화면으로 구현했다(`docs/tasks/INTEGRATION_TASKS.md` I-714 진행 기록).
 - RLS 실측(익명 사용자 2개로 검증 후 삭제): 본인 row SELECT 가능, 타인 row SELECT 불가, 본인 INSERT 불가(서버 trigger만 생성), 타인 UPDATE는 행을 바꾸지 않음.
 - 남은 보안 advisor 경고는 레거시 `conversations`/`messages`/`daily_health_records` 정책 관련 항목이며 B1/B6 범위다.
 
@@ -199,6 +199,7 @@ Frontend UI와 `src/contracts/**`는 임의로 수정하지 않습니다.
 - [x] **B-612** Scheduler Secret 적용
 - [x] **B-613** 최소 Rate Limit 적용 방식 결정 및 규칙 정의 (실제 적용은 배포 시)
 - [x] **B-614** 파괴적 작업 Transaction / 실패 복구 테스트
+- [x] **B-615** 계정 삭제 Auth 실패 시 세션 유지(반쪽 로그아웃 금지: RPC → Auth 삭제 → 성공 시에만 signOut)
 
 ### B6 진행 기록
 

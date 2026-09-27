@@ -50,6 +50,13 @@ const DB_ERROR_CODES: Record<string, { code: string; message: string; status: nu
     message: "메시지를 찾을 수 없습니다.",
     status: 404,
   },
+  // PRD 9-3: 미동의 계정. 클라이언트는 이 코드로 동의 페이지로 보낸다.
+  // 사용자에게는 내부 구현이 아니라 "동의가 필요하므로 막혔다"는 사실만 알린다.
+  CONSENT_REQUIRED: {
+    code: "CONSENT_REQUIRED",
+    message: "건강정보 처리 동의가 필요합니다.",
+    status: 403,
+  },
 };
 
 export function mapDatabaseError(error: { message?: string } | null): AppError {

@@ -363,9 +363,12 @@ MVP에서 이 endpoint는 OpenAI를 호출하지 않습니다.
 
 ```json
 {
-  "onboardingCompleted": true
+  "onboardingCompleted": true,
+  "consentVersion": "2026-09-27-v2"
 }
 ```
+
+- `consentVersion`은 사용자가 동의한 고지 문구 버전이고, 미동의(또는 구버전)는 `null`입니다. 값은 `CURRENT_CONSENT_VERSION`(`src/contracts`)과 같을 때만 유효한 동의로 봅니다.
 
 ### PATCH `/api/profile`
 
@@ -375,7 +378,15 @@ Request:
 { "onboardingCompleted": true }
 ```
 
-Response 200은 GET `/api/profile`과 같은 shape입니다. MVP에서는 온보딩 완료 상태처럼 실제 사용자 프로필에 필요한 최소 필드만 갱신합니다. timezone 설정 API는 제공하지 않습니다.
+동의 이력을 기록할 때는 `reason: "consent"`를 함께 보냅니다.
+
+```json
+{ "reason": "consent", "consentVersion": "2026-09-27-v2" }
+```
+
+`consentVersion`은 현재 고지 버전(`CURRENT_CONSENT_VERSION`, 현재 `2026-09-27-v2`)만 허용합니다. 이전/알 수 없는 버전이면 `400 VALIDATION_ERROR`이며 저장하지 않습니다. Response 200은 GET `/api/profile`과 같은 shape입니다. MVP에서는 온보딩 완료 상태와 동의 이력처럼 실제 사용자 프로필에 필요한 최소 필드만 갱신합니다. timezone 설정 API는 제공하지 않습니다.
+
+**`reason` 규칙 (PRD 9-3):** `consentVersion`은 `reason: "consent"`일 때만 저장됩니다. `reason` 없이(또는 `"onboarding"`) `consentVersion`을 보내도 저장되지 않습니다. 온보딩 완료가 민감정보 동의로 오인되어 데이터가 고지 없이 전송되는 경로를 막기 위한 강제입니다. 실제로 저장할 값이 하나도 없으면 `UPDATE`를 보내지 않습니다.
 
 ## 16. 전체 건강 기록 삭제
 
@@ -385,8 +396,6 @@ Response 200은 GET `/api/profile`과 같은 shape입니다. MVP에서는 온보
 - 모든 health-domain data 삭제
 - 성공 시 `204 No Content`
 
-## 17. 계정 삭제
-
 ### DELETE `/api/account`
 
 - health data 삭제
@@ -395,6 +404,12 @@ Response 200은 GET `/api/profile`과 같은 shape입니다. MVP에서는 온보
 - 성공 시 `204 No Content`
 
 성공 후 세션 무효화.
+
+**동의 게이트 (PRD 9-3).** 9절 `POST /api/daily-records/:date/messages`와 11절 정정 추가는 사용자가 `consent_version`에 동의하지 않았으면 거절합니다. `GET /api/profile`의 `consentVersion`이 `CURRENT_CONSENT_VERSION`과 같을 때만 저장됩니다. 조회·수정·삭제에는 이 게이트를 두지 않습니다(동의 거부 상태에서도 자기 데이터를 지울 수 있어야 합니다).
+
+```json
+{ "error": { "code": "CONSENT_REQUIRED", "message": "건강정보 처리 동의가 필요합니다." } }
+```
 
 ## 18. 내부 Scheduler API
 
@@ -427,7 +442,8 @@ MVP는 Google 로그인만 제공하며 Kakao 로그인은 구현하지 않습�
 
 - Request body 없음
 - Supabase OAuth 인가 URL로 302 리다이렉트합니다.
-- redirect target은 `/api/auth/callback`입니다.
+- redirect target은 `/api/auth/callback?next=<sanitized next>`입니다.
+- `next` (선택): 로그인 후 이동할 경로. **allowlist 밖의 값은 무시되고 `/today`로 이동합니다.** 허용값은 `/onboarding/health-consent` 하나뿐입니다. **네비게이션 의도만** 담으며, 동의 여부나 건강 기록은 담지 않습니다. 미지정 시에도 `/today`이므로, 설정 등 단순 로그인은 원래 동작을 유지한다.
 - 인증 실패 시 `500 INTERNAL_ERROR`
 
 ### GET `/api/auth/callback`

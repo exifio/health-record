@@ -22,6 +22,7 @@ jobs:
 
       - name: Check backup configuration
         env:
+          SUPABASE_BACKUP_ENABLED: ${{ vars.SUPABASE_BACKUP_ENABLED }}
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           AGE_RECIPIENT: ${{ vars.AGE_RECIPIENT }}
           R2_ACCOUNT_ID: ${{ vars.R2_ACCOUNT_ID }}
@@ -30,6 +31,10 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
           set -euo pipefail
+          [[ "$SUPABASE_BACKUP_ENABLED" == "true" ]] || {
+            echo '::error::Set SUPABASE_BACKUP_ENABLED=true before creating, uploading, or pruning production backups'
+            exit 1
+          }
           for name in SUPABASE_DB_URL AGE_RECIPIENT R2_ACCOUNT_ID R2_BUCKET_NAME R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY; do
             if [[ -z "${!name:-}" ]]; then
               echo "::error title=Missing backup setting::$name is not configured"

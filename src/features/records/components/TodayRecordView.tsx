@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useHealthApi } from "@/features/api/api-adapter";
 import { getSystemLocalDate, getSystemTimeZone } from "@/features/api/system-time";
 import { API_ERROR_CODES, isApiError } from "@/features/records/api/health-api";
 import { useAuth } from "@/features/auth/auth-context";
+import { CONSENT_PATH } from "@/server/auth/redirects";
 import { RecordTimeline } from "@/components/records/RecordTimeline";
 import { RecordComposer } from "@/components/records/RecordComposer";
 import { SuggestionCard } from "@/components/records/SuggestionCard";
@@ -27,7 +29,8 @@ export function formatKoreanDate(dateStr: string): string {
 
 export function TodayRecordView() {
   const api = useHealthApi();
-  const { status, openLoginModal } = useAuth();
+  const { status, requestRecordStart } = useAuth();
+  const router = useRouter();
   const isAuthenticated = status === "authenticated";
 
   // F-210 & F-211: Auto-detect local date and timezone
@@ -155,6 +158,13 @@ export function TodayRecordView() {
       api.createMessage(todayDate, {
         content,
         systemTimeZone, // F-212
+      }).catch((error: unknown) => {
+        // PRD 9-3: 서버가 미동의로 거절했다(우회 시도 또는 문구가 바뀌어 재동의가 필요한 경우).
+        // 사용자에게 오류를 남기지 않고 동의 페이지로 보낸다.
+        if (isApiError(error, API_ERROR_CODES.consentRequired)) {
+          router.push(CONSENT_PATH);
+        }
+        throw error;
       }),
     );
 
@@ -244,7 +254,7 @@ export function TodayRecordView() {
         <RecordComposer
           onSubmit={handleCreateMessage}
           isAuthenticated={isAuthenticated}
-          onRequireAuth={openLoginModal}
+          onRequireAuth={requestRecordStart}
         />
       ) : (
         <div className="record-confirmed-notice" data-testid="record-confirmed-notice">

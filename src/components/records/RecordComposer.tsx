@@ -6,6 +6,7 @@ export interface RecordComposerProps {
   onSubmit: (content: string) => Promise<void> | void;
   disabled?: boolean;
   isAuthenticated?: boolean;
+  /** PRD 9-3: 로그인이 필요하면 「건강 기록 시작하기」 로그인 모달을 연다. */
   onRequireAuth?: () => void;
   placeholder?: string;
 }
@@ -23,7 +24,9 @@ export async function executeComposerSubmit({
   onSubmit: (content: string) => Promise<void> | void;
   onRequireAuth?: () => void;
 }): Promise<{ success: boolean; error?: string }> {
-  // F-106: Block submission for unauthenticated or demo users
+  // F-106: Block submission for unauthenticated or demo users.
+  // 동의는 여기서 판정하지 않는다 — 오늘 기록 화면이 `canWrite`로 기록 입력 자체를
+  // 숨기므로, 컴포저는 로그인만 책임진다(职责을 둘로 쪼갠다).
   if (!isAuthenticated) {
     onRequireAuth?.();
     return { success: false };

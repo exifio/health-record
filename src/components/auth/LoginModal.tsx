@@ -10,6 +10,11 @@ export interface LoginModalProps {
   dismissible?: boolean;
 }
 
+/**
+ * 로그인 모달은 **인증만** 담당한다(PRD 9-3).
+ * 건강정보 처리 동의는 오늘 기록 화면의 인라인 카드가 맡는다 — 로그인 행위가
+ * 민감정보 동의를 강제로 발생시키면 안 되고, 동의 UI가 모달에 섞이면 인증 책임이 흐려진다.
+ */
 export function LoginModal({
   isOpen,
   onClose,

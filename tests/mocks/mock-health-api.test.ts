@@ -9,6 +9,16 @@ import {
 import { createMockHealthApi } from "@/mocks/health-api";
 
 describe("createMockHealthApi (F-007)", () => {
+  it("rejects a stale consent version like the server", async () => {
+    const api = createMockHealthApi();
+    const before = await api.getProfile();
+
+    await expect(api.updateProfile({ reason: "consent", consentVersion: "2026-09-27-v1" }))
+      .rejects.toMatchObject({ code: "VALIDATION_ERROR", status: 400 });
+
+    await expect(api.getProfile()).resolves.toEqual(before);
+  });
+
   it("implements all HealthApi operations and returns valid contract data", async () => {
     const api = createMockHealthApi();
 

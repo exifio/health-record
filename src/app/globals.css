@@ -900,6 +900,139 @@ body {
   color: var(--muted-foreground);
   font-size: 0.8125rem;
 }
+/* ==========================================================================
+   건강정보 처리 동의 전용 페이지 (PRD 9-3)
+   모달이 아니라 full page onboarding 화면이다. 모바일에서 중앙 팝업처럼 보이지 않게 한다.
+   ========================================================================== */
+
+.health-consent-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  /* 데스크톱에서 본문이 옆으로 늘어나지 않게 한다. */
+  max-width: 44rem;
+  padding-bottom: 3rem;
+}
+.health-consent-page .consent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+.consent-defs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+}
+.consent-def {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.consent-def dt {
+  color: var(--foreground);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+.consent-def dd {
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  margin: 0;
+}
+.consent-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.75rem 0.875rem;
+  background-color: var(--surface-hover);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.consent-list li {
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  padding-left: 0.875rem;
+  position: relative;
+}
+.consent-list li::before {
+  content: "·";
+  font-weight: 700;
+  left: 0.125rem;
+  position: absolute;
+}
+.consent-more {
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+.consent-link {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: underline;
+}
+.consent-check {
+  align-items: flex-start;
+  color: var(--foreground);
+  cursor: pointer;
+  display: flex;
+  font-size: 0.8125rem;
+  gap: 0.5rem;
+  line-height: 1.5;
+  padding: 0.25rem 0;
+}
+.consent-input {
+  accent-color: var(--primary);
+  cursor: pointer;
+  flex-shrink: 0;
+  /* 터치 영역 확보: 기본 13px 체크박스는 모바일에서 좁다. */
+  height: 1.125rem;
+  margin-top: 0.125rem;
+  width: 1.125rem;
+}
+.consent-error {
+  color: var(--danger);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+.consent-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.onboarding-confirm-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* 모바일: 고지가 좁은 폭에서 눌려 보이지 않게 하고, 버튼은 터지�� 확보한다. */
+@media (max-width: 480px) {
+  .health-consent-page {
+    gap: 1rem;
+  }
+  .consent-list li,
+  .consent-more,
+  .consent-check,
+  .consent-def dd {
+    font-size: 0.875rem;
+  }
+  /* 모바일에서는 세로로 쌓아 모달처럼 보이지 않게 한다. */
+  .health-consent-page .consent-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .health-consent-page .consent-actions .onboarding-confirm-btn,
+  .health-consent-page .consent-actions .btn-cancel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    width: 100%;
+  }
+}
 .onboarding-confirm-btn {
   background-color: var(--primary);
   color: var(--primary-foreground);
@@ -1177,6 +1310,14 @@ body {
 .delete-dialog-desc {
   color: var(--foreground);
   font-size: 0.875rem;
+}
+.delete-dialog-error {
+  background-color: var(--badge-danger-bg);
+  color: var(--badge-danger-fg);
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
 }
 .delete-dialog-actions {
   justify-content: flex-end;
@@ -2110,19 +2251,73 @@ body {
   cursor: pointer;
 }
 
-.policy-info-card {
-  background-color: var(--background);
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
+/* ==========================================================================
+   개인정보 및 AI 처리 (/settings, /settings/privacy)
+   ========================================================================== */
+
+.privacy-link {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.8125rem;
+  align-self: flex-start;
+  transition: opacity 0.15s ease;
+}
+
+.privacy-link:hover {
+  text-decoration: underline;
+}
+
+/* 처리방침 페이지가 없을 때는 링크처럼 보이지만 눌리지 않게 한다(깨진 링크 방지). */
+.privacy-link--disabled {
+  color: var(--muted-foreground);
+  cursor: not-allowed;
+}
+
+.privacy-link--disabled:hover {
+  text-decoration: none;
+}
+
+/* 법문 조항마다 카드를 쌓으면 문서처럼 딱딱해진다. 작은 제목 + 문단으로 나눈다. */
+.privacy-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 42rem;
+}
+
+.privacy-back-link {
+  color: var(--muted-foreground);
+  text-decoration: none;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  align-self: flex-start;
+  transition: color 0.15s ease;
+}
+
+.privacy-back-link:hover {
+  color: var(--foreground);
+  text-decoration: underline;
+}
+
+/* 구분선은 섹션 사이에만 둔다. 첫 섹션은 settings-header의 border-bottom 바로 아래에
+   오기 때문에 여기서 한 번 더 그으면 선이 2줄로 보인다. */
+.privacy-section + .privacy-section {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.privacy-section {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.policy-info-text {
-  font-size: 0.8125rem;
-  color: var(--muted-foreground);
-  line-height: 1.5;
+.privacy-text {
+  font-size: 0.875rem;
+  color: var(--foreground);
+  line-height: 1.7;
 }
 
 .settings-section--danger {

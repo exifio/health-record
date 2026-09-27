@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { RecordsShell } from "@/components/layout/RecordsShell";
 import { useHealthApi } from "@/features/api/api-adapter";
@@ -38,6 +39,7 @@ export function SettingsContent() {
 
   const [showDeleteDataModal, setShowDeleteDataModal] = useState(false);
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -55,15 +57,21 @@ export function SettingsContent() {
     }
   };
 
+  // 계정 삭제 성공: 확인 모달을 닫고 서버 세션 정리 + 클라이언트 로그아웃을 모두
+  // 끝낸 뒤에야 홈으로 보낸다. 모달을 먼저 닫고 끝내면(이전 동작) 설정 화면이
+  // 로그인 상태 그대로 남아 "아무 일도 안 일어난" 것처럼 보인다.
+  // 실패: 모달은 열어 둔 채 모달 안에만 에러를 보여 준다. 이전처럼 닫고 배너에
+  // 남기면 화면 아래라 사용자가 실패를 못 보고 "다른 페이지 갔다 와야 안다"가 된다.
   const handleDeleteAccount = async () => {
     try {
       setIsDeleting(true);
+      setDeleteAccountError(null);
       await api.deleteAccount();
+      await logout();
       setShowDeleteAccountModal(false);
-      logout();
-      router.push("/");
+      router.replace("/?account-deleted=1");
     } catch {
-      setMessage("계정 삭제에 실패했습니다.");
+      setDeleteAccountError("계정 삭제에 실패했습니다. 다시 시도해주세요.");
     } finally {
       setIsDeleting(false);
     }
@@ -118,31 +126,6 @@ export function SettingsContent() {
                 </label>
               );
             })}
-          </div>
-        </section>
-
-        {/* F-710: Privacy and AI policy link / notice */}
-        <section className="settings-section" data-testid="policy-settings-section">
-          <h3 className="settings-section-title">개인정보 및 AI 처리 안내</h3>
-          <div className="policy-info-card">
-            <p className="policy-info-text">
-              • 사용자가 작성한 원본 기록이 언제나 최우선 원본이며, AI 결과는 파생 데이터입니다.
-            </p>
-            <p className="policy-info-text">
-              • AI는 의료 진단, 질병 예측, 약 추천을 수행하지 않으며, 일일 요약 보조 기능으로만 활용됩니다.
-            </p>
-            <p className="policy-info-text">
-              • AI 정리를 위해 그날 작성한 기록의 <strong>내용이 OpenAI(외부 AI 처리자)로 전송</strong>됩니다. AI는
-              대화하지 않고 기록을 정리만 하며, 전송된 내용으로 원본이 바뀌지는 않습니다.
-            </p>
-            <p className="policy-info-text">
-              • 작성하신 건강 정보는 철저히 사용자 본인 계정에만 격리 보관되며, 다른 사용자에게 제공되지 않습니다.
-            </p>
-            <p className="policy-info-text">
-              • <strong>전체 건강 기록 삭제·계정 삭제</strong>를 하면 서비스가 사용하는 데이터베이스에서는 즉시
-              반영됩니다. 다만 운영을 위한 백업 사본은 내부 보존 정책에 따라 일정 기간 남아 있을 수 있으며,
-              기간이 지나면 복구할 수 없습니다.
-            </p>
           </div>
         </section>
 
@@ -231,6 +214,7 @@ export function SettingsContent() {
             </div>
             )}
 
+            {/* 계정 행은 로그인 상태에서만 노출한다(익명/데모에는 계정 자체가 없음). */}
             {canDeleteAccount && (
             <div className="danger-action-row">
               <div className="danger-action-info">
@@ -252,6 +236,21 @@ export function SettingsContent() {
           </div>
         </section>
         )}
+
+        {/* F-710: 개인정보 및 AI 처리 안내.
+            설정 화면에는 요약만 두고 상세는 /settings/privacy 독립 페이지로 보낸다(모달/바텀시트 금지).
+            읽기 전용 고지라 설정 항목이 아니므로 최하단에 두어 계정·데이터 관리 같은 실제 액션을 밀어내지 않는다. */}
+        <section className="settings-section" data-testid="policy-settings-section">
+          <h3 className="settings-section-title">개인정보 및 AI 처리</h3>
+          <p className="settings-section-desc">작성한 건강 기록은 사용자 계정을 기준으로 관리됩니다.</p>
+          <p className="settings-section-desc">
+            AI 정리 기능 사용 시 필요한 기록이 외부 AI 서비스로 전송될 수 있으며, AI가 생성한 내용은 사용자가
+            작성한 원본 기록을 변경하지 않습니다.
+          </p>
+          <Link href="/settings/privacy" className="privacy-link" data-testid="privacy-detail-link">
+            개인정보 및 AI 처리 자세히 보기 →
+          </Link>
+        </section>
 
         {/* F-702 Confirm Modal */}
         {showDeleteDataModal && (
@@ -284,7 +283,8 @@ export function SettingsContent() {
           </div>
         )}
 
-        {/* F-703 Confirm Modal */}
+        {/* F-703 Confirm Modal: 실패는 모달 안에서 보여 준다. 닫고 배너에 남기면
+            화면 아래라 실패를 못 보고 "다른 페이지 가야 안다"가 되기 때문이다. */}
         {showDeleteAccountModal && (
           <div className="delete-confirm-overlay" role="dialog" aria-modal="true" data-testid="delete-account-dialog">
             <div className="delete-confirm-card">
@@ -292,11 +292,16 @@ export function SettingsContent() {
               <p className="delete-dialog-desc">
                 계정과 관련된 모든 정보가 완전히 삭제되며 즉시 로그아웃됩니다. 계속하시겠습니까?
               </p>
+              {deleteAccountError && (
+                <p role="alert" className="delete-dialog-error" data-testid="delete-account-error">
+                  {deleteAccountError}
+                </p>
+              )}
               <div className="delete-dialog-actions">
                 <button
                   type="button"
                   className="btn-cancel"
-                  onClick={() => setShowDeleteAccountModal(false)}
+                  onClick={() => { setShowDeleteAccountModal(false); setDeleteAccountError(null); }}
                   disabled={isDeleting}
                 >
                   취소

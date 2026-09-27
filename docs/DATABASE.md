@@ -20,10 +20,28 @@ MVP에서는 `visit_reports`를 별도 저장하지 않는 것을 권장합니�
 |---|---|---|
 | id | uuid PK | `auth.users.id`와 동일 |
 | onboarding_completed_at | timestamptz null | 온보딩 완료 |
+| consent_version | text null | 사용자가 동의한 개인정보/AI 처리 고지 버전. `null`이면 미동의 (B9) |
+| consented_at | timestamptz null | 위 버전에 동의한 시각. 철회 시 `null` (B9) |
 | created_at | timestamptz | 생성 시간 |
 | updated_at | timestamptz | 수정 시간 |
 
 주의: 건강 상태나 질병 정보를 profile에 넣지 않습니다.
+
+`consent_version`은 고지 문구의 **버전 식별자**입니다. 문구 내용을 바꾸면 `CURRENT_CONSENT_VERSION`(`src/contracts`)을 올려야 하고, 저장된 값과 다르면 미동의로 간주해 다시 동의를 받습니다. 보존 기간 같은 운영 정책 숫자는 이 컬럼에 넣지 않습니다(I-714).
+
+### 동의 강제 (B10, B11)
+
+사용자 원문을 **새로 추가하는** 두 RPC가 `profiles.consent_version`을 확인합니다.
+
+| 함수 | 구분 |
+|---|---|
+| `create_record_message` | 기록 작성 |
+| `create_record_correction` | 정정 추가 |
+
+- 현재 요구 버전은 SQL에 `'2026-09-27-v2'`로 박혀 있다(B11). **고지 문구를 바꾸면 `CURRENT_CONSENT_VERSION`과 새 마이그레이션의 요구 버전을 함께 올려야 한다.** 하나만 올리면 사용자가 조용히 차단된다. 두 값이 같은지 `tests/components/consent-flow.test.ts`가 고정한다.
+- 미동의면 `CONSENT_REQUIRED`(errcode 42501)를 던진다. 서버는 `mapDatabaseError`로 403 `CONSENT_REQUIRED`에 매핑하고, 클라이언트는 이 코드로 `/onboarding/health-consent`에 보낸다.
+- **조회·수정·삭제에는 이 게이트를 두지 않는다.** 동의 거부 상태에서도 사용자는 자기 데이터를 조회하고 지울 수 있어야 한다.
+- 두 함수 모두 `security definer`이므로 RLS를 우회한다. 그래서 `auth.uid()` 소유권 검증(B7)과 동의 검증을 **둘 다** 명시적으로 둔다.
 
 ## 3. daily_records
 
@@ -232,4 +250,3 @@ RLS와 함수 검증이 함께 사용자의 경로가 됩니다.
 - family sharing
 
 현재 migration에는 넣지 않습니다.
-
