@@ -344,7 +344,7 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 - [x] **I-715** Production 환경변수 — 7/7 등록, `OPENAI_API_KEY` Production 등록 확인(값 비노출)
 - [x] **I-716** Vercel Production 배포 및 실제 계정 smoke — Google OAuth→v2 동의 저장→기록 생성과 테스트 데이터 정리를 2026-09-27에 확인했다. Vercel 배포 범위는 완료. 백업 복구와 email/password 회원가입 정책은 별도 전체 출시 작업이다.
 - [x] **I-717** B-613 rate limit — Firewall 활성화와 12개 유효 규칙, 실제 429 및 본문을 확인함 (`docs/SECURITY.md` 10절)
-- [~] **I-718** Supabase Free 백업 — Vercel Blob 비공개 저장소(`icn1`, 서울)와 30일 보존을 승인받아 구현했다. GitHub Actions Blob secret은 등록했다. Supabase DB 접속 secret 등록·실제 암호화 백업 업로드·별도 Free 프로젝트 복구 리허설이 남았다. Vercel Production 배포와 별개다.
+- [~] **I-718** Supabase Free 백업 — Vercel Blob 비공개 저장소(`icn1`, 서울)와 30일 보존을 승인받아 구현했다. Blob·DB URL secret은 등록됐지만 DB URL이 TLS 사전 검증을 통과하지 못했다. 실제 암호화 백업 업로드·별도 Free 프로젝트 복구 리허설이 남았다. 백업 일정은 값 수정 전까지 꺼 두며 Vercel Production 배포와 별개다.
 
 ### I-718 진행 기록 (2026-09-27)
 
@@ -354,10 +354,11 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 - 새 암호화 백업의 업로드와 크기를 확인한 뒤 전용 pathname 규칙에 해당하는 백업 중 30일이 지난 항목만 삭제한다. workflow artifact나 공개 repository에는 dump를 저장하지 않는다.
 - age 개인 키는 로컬 `~/.config/health-record/backup-age-identity.txt`에 권한 `600`으로 생성했고, 공개 수신자 `AGE_RECIPIENT`만 GitHub repository variable에 등록했다. 개인 키는 GitHub에 두지 않는다.
 - **사용자 결정(2026-09-27):** Cloudflare는 사용하지 않는다. Vercel Blob private store `health-record-supabase-backups`, region `icn1`(서울), 30일 보존을 승인했다. store는 생성됐고 private 설정이다. `BLOB_READ_WRITE_TOKEN`은 GitHub Actions repository secret에 등록하고 Vercel Preview 환경변수에서는 제거했다. Vercel Production 환경에는 넣지 않았다. 개인정보 안내 문구 변경은 사용자가 별도 검토하기로 한 범위라 아직 수정하지 않았다.
-- GitHub repository variable `AGE_RECIPIENT`는 이미 등록돼 있다. 현재 없는 운영 값은 `SUPABASE_DB_URL` secret과 `SUPABASE_BACKUP_ENABLED=true` variable이다. DB 연결 URL은 저장소에 기록하지 않는다.
+- GitHub repository variable `AGE_RECIPIENT`는 이미 등록돼 있다. `SUPABASE_DB_URL` secret은 존재하지만 workflow가 요구하는 `sslmode=require`, `sslmode=verify-ca`, `sslmode=verify-full` 중 하나가 확인되지 않았다. 검증 동안 `SUPABASE_BACKUP_ENABLED=false`로 두며 DB 연결 URL은 저장소에 기록하지 않는다.
 - Vercel Blob은 사용량 기반으로 청구되며 플랜별 포함량을 넘으면 비용이 발생할 수 있다. 실제 덤프 크기를 확인한 뒤 Vercel usage에서 확인한다([Vercel Blob 가격](https://vercel.com/docs/vercel-blob/usage-and-pricing)).
 - synthetic PostgreSQL source/restore rehearsal에서 `auth.users`, `auth.identities`, profile, daily record, message, summary, suggestion, correction 데이터를 같은 dump로 복원했다. 복원 후 Auth 트리거가 중복 profile을 만들지 않는 것도 확인했다.
-- **남은 운영 gate:** GitHub Actions `SUPABASE_DB_URL` secret을 등록하고 코드가 `main`에 반영된 뒤 `SUPABASE_BACKUP_ENABLED=true`를 설정한다. 이후 Production 암호화 백업 1건 업로드·목록 확인, 새 빈 Supabase Free 프로젝트로 복구해 Auth 사용자·앱 데이터·RLS·trigger를 검증한다. 현재 DB URL secret이 없어 Production dump는 시작하지 않았다. 개인정보 안내에 30일 보존과 저장 위치를 반영하는 작업은 별도 보류다. 따라서 I-718은 완료 처리하지 않는다. 이 작업은 Vercel 배포에 필요하지 않다.
+- **검증 기록 (2026-09-27):** 사용자가 secret을 저장했다고 알려온 뒤 Actions run `36308828931`을 실행했다. `Check backup configuration` 단계에서 `SUPABASE_DB_URL must enable TLS`로 중단됐으며 DB 접속·dump·Blob 업로드·삭제 단계는 실행되지 않았다. `SUPABASE_BACKUP_ENABLED`를 `false`로 되돌려 매일 실행을 중지했다. Secret 값 자체는 읽거나 출력하지 않았다.
+- **남은 운영 gate:** `SUPABASE_DB_URL` secret에 TLS 연결 옵션을 반영해 사전 검증을 통과시킨 뒤 Production 암호화 백업 1건 업로드·목록 확인, 새 빈 Supabase Free 프로젝트로 복구해 Auth 사용자·앱 데이터·RLS·trigger를 검증한다. 개인정보 안내에 30일 보존과 저장 위치를 반영하는 작업은 별도 보류다. 따라서 I-718은 완료 처리하지 않는다. 이 작업은 Vercel 배포에 필요하지 않다.
 
 ### I-716 배포 확인 (2026-09-27)
 
