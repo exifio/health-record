@@ -342,7 +342,7 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 - [x] **I-713** 삭제 확인 전체 흐름 검증
 - [x] **I-714** 개인정보/AI 처리 안내 문구 — **완료(2026-09-27).** 고지 문구 승인 + OpenAI 정책 근거 확인(v1→v2 재동의 실사용자 검증) + 서버 측 기록 작성 강제(B10/B11)까지 마감
 - [x] **I-715** Production 환경변수 — 7/7 등록, `OPENAI_API_KEY` Production 등록 확인(값 비노출)
-- [!] **I-716** 배포 준비 완료 표시 — consent UI가 Production에 배포됐고 공개 페이지 응답도 확인했다. 실제 OAuth→동의 저장→기록 생성 흐름은 아직 검증하지 못했다. I-718 Auth 포함 복구 검증, email/password 회원가입, 실제 백업 보존 정책 결정도 남아 있어 완료 표시하지 않음
+- [!] **I-716** 배포 준비 완료 표시 — Production 실제 Google OAuth→v2 동의 저장→기록 생성 smoke와 테스트 데이터 정리를 2026-09-27에 확인했다. I-718 Auth 포함 복구 검증, email/password 회원가입 정책, 실제 백업 보존 정책 결정이 남아 있어 완료 표시하지 않음
 - [x] **I-717** B-613 rate limit — Firewall 활성화와 12개 유효 규칙, 실제 429 및 본문을 확인함 (`docs/SECURITY.md` 10절)
 - [~] **I-718** Supabase Free 백업 — 저장소 자동화와 Auth-aware 복구 스크립트 구현; R2/DB 자격 증명과 운영 복구 리허설 대기
 
@@ -353,6 +353,7 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 - `.github/workflows/supabase-backup.yml`은 매일 18:00 UTC(한국 03:00)에 실행되며 `SUPABASE_BACKUP_ENABLED=true`일 때만 schedule을 활성화한다. 수동 실행도 같은 변수가 `true`가 아니면 dump·upload·30일 삭제 전에 실패한다. GitHub Actions에는 `contents: read`만 부여하고, R2에는 age 암호화된 파일만 전송한다.
 - 매일 업로드가 확인된 다음, 전용 key prefix의 백업만 30일보다 오래된 순서로 삭제한다. workflow artifact나 공개 repository에는 dump를 저장하지 않는다.
 - age 개인 키는 로컬 `~/.config/health-record/backup-age-identity.txt`에 권한 `600`으로 생성했고, 공개 수신자 `AGE_RECIPIENT`만 GitHub repository variable에 등록했다. 개인 키는 GitHub에 두지 않는다.
+- 2026-09-27 재확인: GitHub Actions repository secrets는 0건이고 repository variable은 `AGE_RECIPIENT`만 있다. DB 접속 URL, R2 자격 증명, `SUPABASE_BACKUP_ENABLED`는 등록되지 않았다.
 - synthetic PostgreSQL source/restore rehearsal에서 `auth.users`, `auth.identities`, profile, daily record, message, summary, suggestion, correction 데이터를 같은 dump로 복원했다. 복원 후 Auth 트리거가 중복 profile을 만들지 않는 것도 확인했다.
 - **남은 운영 gate:** `SUPABASE_DB_URL`, 비공개 R2 bucket, `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, 그리고 `SUPABASE_BACKUP_ENABLED=true`가 필요하다. 저장 위치·국외 이전과 30일 보존 승인 전에는 R2 bucket 생성이나 자동 삭제를 활성화하지 않는다. 현재 DB URL과 R2 계정/자격 증명은 이 세션에 없어 Production upload와 새 Supabase Free 프로젝트 복구 리허설은 수행하지 않았다. 따라서 I-718은 완료 처리하지 않는다.
 
@@ -360,7 +361,16 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 
 - Commit `124f18b`를 공개 GitHub `main`에 push했고 Vercel Production 배포 `dpl_C41xz95VDcrMRRkYnMwwtEUDjkkn`이 `Ready`가 됐다.
 - `https://health-record-one.vercel.app/`, `/onboarding/health-consent`, `/settings/privacy`가 각각 HTTP 200을 반환한다. DB에는 B9-B11이 이미 적용돼 있다.
-- 익명 GET에서 페이지 route만 확인했다. OAuth 로그인, v2 동의 저장, 동의 뒤 실제 기록 생성의 연속 흐름은 검증하지 않았으므로 I-716을 완료 처리하지 않는다.
+- 당시 익명 GET에서는 페이지 route만 확인했다. 실제 계정 연속 흐름은 아래 2026-09-27 smoke에서 별도 검증했다.
+
+### I-716 실제 계정 OAuth·동의·기록 smoke (2026-09-27)
+
+- 첫 Production OAuth 시도는 `localhost:3000/today`로 돌아왔다. Supabase Auth URL Configuration의 Site URL이 `http://localhost:3000`이고 허용 목록에 로컬 callback만 있는 것을 확인했다. Site URL을 `https://health-record-one.vercel.app`으로 변경하고 `https://health-record-one.vercel.app/api/auth/callback`을 추가했으며 로컬 callback은 유지했다. 저장 후 Dashboard를 새로고침해 두 설정을 확인했다.
+- 사용자가 Google 계정을 직접 선택한 뒤 Production `/api/profile`과 오늘 기록 목록 조회가 각각 200이었다. 동의 저장 전 `consentVersion`은 비어 있었고, 오늘 기록은 0건이었다.
+- Production 동의 화면에서 필수 체크와 저장을 진행했다. 이후 `/api/profile`이 `consentVersion: 2026-09-27-v2`를 반환했다.
+- 오늘 기록 화면에서 실제 건강 상태가 아닌 고유 테스트 문구를 입력해 메시지 저장을 확인했다. 상세 조회는 200, 기록은 `draft`, revision 1, 테스트 메시지 1개였다.
+- 해당 메시지 ID만 DELETE해 204를 확인했다. 정리 후 오늘 목록은 0건, 상세 조회는 404였고, 프로필의 동의 버전은 v2로 유지됐다. 계정 이메일과 테스트 문구 원문은 저장소 문서에 기록하지 않았다.
+- **I-716은 계속 `[!]`다.** OAuth·동의·기록 실제 흐름은 통과했지만 I-718 Auth 포함 복구 리허설, email/password 회원가입 정책, 실제 백업 보존 정책 결정이 남아 있다.
 
 ### 남은 3건 처리 결과 (2026-09-26 당시 기록)
 
