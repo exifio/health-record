@@ -8,3 +8,8 @@ node_modules/
 *.tsbuildinfo
 .playwright-cli/
 .vercel
+.swc/
+.DS_Store
+supabase/.temp/
+.omo/
+.superpowers
