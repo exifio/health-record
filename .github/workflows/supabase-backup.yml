@@ -1,0 +1,105 @@
+name: Supabase encrypted backup
+
+on:
+  schedule:
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-encrypted-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    if: github.event_name == 'workflow_dispatch' || vars.SUPABASE_BACKUP_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Check backup configuration
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          AGE_RECIPIENT: ${{ vars.AGE_RECIPIENT }}
+          R2_ACCOUNT_ID: ${{ vars.R2_ACCOUNT_ID }}
+          R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          set -euo pipefail
+          for name in SUPABASE_DB_URL AGE_RECIPIENT R2_ACCOUNT_ID R2_BUCKET_NAME R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error title=Missing backup setting::$name is not configured"
+              exit 1
+            fi
+          done
+          [[ "$AGE_RECIPIENT" == age1* ]] || { echo '::error::AGE_RECIPIENT is invalid'; exit 1; }
+          [[ "$R2_ACCOUNT_ID" =~ ^[a-f0-9]{32}$ ]] || { echo '::error::R2_ACCOUNT_ID is invalid'; exit 1; }
+          [[ "$R2_BUCKET_NAME" =~ ^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$ ]] || { echo '::error::R2_BUCKET_NAME is invalid'; exit 1; }
+          [[ "$SUPABASE_DB_URL" == *sslmode=require* || "$SUPABASE_DB_URL" == *sslmode=verify-ca* || "$SUPABASE_DB_URL" == *sslmode=verify-full* ]] || {
+            echo '::error::SUPABASE_DB_URL must enable TLS'
+            exit 1
+          }
+          command -v aws >/dev/null
+          command -v docker >/dev/null
+
+      - name: Install age
+        run: sudo apt-get update && sudo apt-get install --yes age
+
+      - name: Create encrypted snapshot
+        id: snapshot
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          AGE_RECIPIENT: ${{ vars.AGE_RECIPIENT }}
+          BACKUP_SOURCE_REVISION: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          backup_path="$(scripts/backup/supabase-backup.sh create "$RUNNER_TEMP")"
+          echo "path=$backup_path" >> "$GITHUB_OUTPUT"
+          echo "object_key=health-record/supabase/$(basename "$backup_path")" >> "$GITHUB_OUTPUT"
+
+      - name: Upload ciphertext and prune backups older than 30 days
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ACCOUNT_ID: ${{ vars.R2_ACCOUNT_ID }}
+          R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
+          BACKUP_PATH: ${{ steps.snapshot.outputs.path }}
+          BACKUP_OBJECT_KEY: ${{ steps.snapshot.outputs.object_key }}
+        run: |
+          set -euo pipefail
+          endpoint="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          aws s3 cp "$BACKUP_PATH" "s3://${R2_BUCKET_NAME}/${BACKUP_OBJECT_KEY}" \
+            --endpoint-url "$endpoint" --only-show-errors --content-type application/octet-stream
+          local_size="$(stat -c '%s' "$BACKUP_PATH")"
+          remote_size="$(aws s3api head-object --bucket "$R2_BUCKET_NAME" --key "$BACKUP_OBJECT_KEY" \
+            --endpoint-url "$endpoint" --query ContentLength --output text)"
+          [[ "$local_size" == "$remote_size" && "$remote_size" -gt 0 ]]
+
+          aws s3api list-objects-v2 --bucket "$R2_BUCKET_NAME" --prefix health-record/supabase/ \
+            --endpoint-url "$endpoint" --output json > "$RUNNER_TEMP/r2-backups.json"
+          python3 - "$RUNNER_TEMP/r2-backups.json" "$R2_BUCKET_NAME" "$endpoint" <<'PY'
+          import json
+          import re
+          import subprocess
+          import sys
+          from datetime import datetime, timedelta, timezone
+
+          listing_path, bucket, endpoint = sys.argv[1:]
+          cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+          pattern = re.compile(r"health-record/supabase/supabase-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}\.tar\.gz\.age\Z")
+          with open(listing_path, encoding="utf-8") as listing_file:
+              objects = json.load(listing_file).get("Contents", [])
+          for item in objects:
+              key = item.get("Key", "")
+              if pattern.fullmatch(key) and datetime.fromisoformat(item["LastModified"].replace("Z", "+00:00")) < cutoff:
+                  subprocess.run(
+                      ["aws", "s3api", "delete-object", "--bucket", bucket, "--key", key,
+                       "--endpoint-url", endpoint],
+                      check=True, stdout=subprocess.DEVNULL,
+                  )
+          PY

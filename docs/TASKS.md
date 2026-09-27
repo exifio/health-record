@@ -68,8 +68,8 @@
 | 공통 기반 | 완료 | 이 문서의 `0. 공통 선행 작업` |
 | 프론트엔드 | 완료 | `docs/tasks/FRONTEND_TASKS.md` |
 | 백엔드 | 완료 | `docs/tasks/BACKEND_TASKS.md` |
-| 통합 | 보류 (I-714/I-716 사용자 결정 대기) | `docs/tasks/INTEGRATION_TASKS.md` |
-| 최종 QA / 배포 | 보류 (개인정보·동의·백업 정책 승인 대기) | `docs/tasks/INTEGRATION_TASKS.md` |
+| 통합 | 진행 (I-718 저장소 자동화 구현, R2/DB 설정 및 운영 복구 리허설 대기) | `docs/tasks/INTEGRATION_TASKS.md` |
+| 최종 QA / 배포 | 보류 (개인정보·동의 결정 및 Auth 포함 복구 검증 대기) | `docs/tasks/INTEGRATION_TASKS.md` |
 
 상태는 각 상세 TASK 문서의 실제 진행 상황에 맞춰 갱신합니다.
 
