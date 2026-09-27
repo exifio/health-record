@@ -342,9 +342,9 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 - [x] **I-713** 삭제 확인 전체 흐름 검증
 - [x] **I-714** 개인정보/AI 처리 안내 문구 — **완료(2026-09-27).** 고지 문구 승인 + OpenAI 정책 근거 확인(v1→v2 재동의 실사용자 검증) + 서버 측 기록 작성 강제(B10/B11)까지 마감
 - [x] **I-715** Production 환경변수 — 7/7 등록, `OPENAI_API_KEY` Production 등록 확인(값 비노출)
-- [x] **I-716** Vercel Production 배포 및 실제 계정 smoke — Google OAuth→v2 동의 저장→기록 생성과 테스트 데이터 정리를 2026-09-27에 확인했다. Vercel 배포 범위는 완료. 백업 복구와 email/password 회원가입 정책은 별도 전체 출시 작업이다.
+- [x] **I-716** Vercel Production 배포 및 실제 계정 smoke — Google OAuth→v2 동의 저장→기록 생성과 테스트 데이터 정리를 2026-09-27에 확인했다. Vercel 배포 범위는 완료. 별도 작업인 I-718 백업 복구도 완료했으며, email/password 회원가입 정책은 전체 출시 판단으로 남아 있다.
 - [x] **I-717** B-613 rate limit — Firewall 활성화와 12개 유효 규칙, 실제 429 및 본문을 확인함 (`docs/SECURITY.md` 10절)
-- [~] **I-718** Supabase Free 백업 — Vercel Blob 비공개 저장소(`icn1`, 서울)와 30일 보존을 승인받아 구현했다. Supabase DB 비밀번호를 회전하고 GitHub Actions secret을 갱신했다. 2026-09-27 Actions run `36311990002`에서 TLS·암호화 snapshot·Blob 업로드·목록 크기 검증을 통과했다(2,045 bytes, 30일 초과 항목 0개 삭제). 매일 예약도 활성화했다. 별도 Free 복구 프로젝트를 만들었고 실제 복구 리허설이 남아 있다. 개인정보 안내 문구는 사용자가 검토 중인 별도 출시 gate다. Vercel Production 배포와 별개다.
+- [x] **I-718** Supabase Free 백업 — Vercel Blob 비공개 저장소(`icn1`, 서울)와 30일 보존, 매일 백업, 별도 Free 프로젝트 복구까지 검증했다. 2026-09-27 Actions run `36311990002`의 2,045 bytes 암호화 백업을 복구 프로젝트에 적용했고, 13개 migration·Auth 및 앱 데이터·RLS·trigger·RPC·참조 무결성 검증을 통과했다. Auth 세션은 백업 대상이 아니므로 복구 뒤 다시 로그인해야 한다. 개인정보 안내 문구는 별도의 출시 gate이며, I-718은 Vercel Production 배포와 별개다.
 
 ### I-718 진행 기록 (2026-09-27)
 
@@ -360,9 +360,9 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 - **검증 기록 (2026-09-27):** 이전 Actions run `36310483174`는 `SUPABASE_DB_URL`의 TLS 설정 누락으로 configuration 단계에서 끝났다. TLS 옵션을 수정한 뒤 run `36310791543`은 TLS 검사를 통과했으나 `pg_dump`가 비밀번호의 URI 인코딩 오류로 중단됐다. 그 공개 저장소 실행 로그에 비밀번호 일부가 포함되어 해당 run과 로그를 삭제했다. dump·Blob 업로드·30일 prune은 실행되지 않았다. 이후 사용자가 승인해 Dashboard에서 DB 비밀번호를 회전했고 `SUPABASE_DB_URL` secret을 새 URL로 갱신했다. 현재 `SUPABASE_BACKUP_ENABLED=false`다. Secret 값은 읽거나 문서에 기록하지 않았다. 백업 스크립트도 성공 후 `EXIT` trap이 지역 변수에 접근해 임시 파일을 남기는 오류가 있었다. 재현 테스트를 먼저 실패시킨 뒤 script-level cleanup state로 수정했으며 `scripts/backup/supabase-backup.cleanup.test.sh`가 통과한다.
 - **검증 기록 (2026-09-27):** 이전 Actions run `36310483174`는 `SUPABASE_DB_URL`의 TLS 설정 누락으로 configuration 단계에서 끝났다. TLS 옵션을 수정한 뒤 run `36310791543`은 TLS 검사를 통과했으나 `pg_dump`가 비밀번호의 URI 인코딩 오류로 중단됐다. 그 공개 저장소 실행 로그에 비밀번호 일부가 포함되어 해당 run과 로그를 삭제했다. dump·Blob 업로드·30일 prune은 실행되지 않았다. 이후 사용자가 승인해 Dashboard에서 DB 비밀번호를 회전했고 `SUPABASE_DB_URL` secret을 새 URL로 갱신했다. 10:05 UTC secret 갱신 시각을 확인했다. 이어 run `36311596851`은 configuration/TLS, PostgreSQL dump와 암호화 snapshot 생성을 통과했지만 Blob 업로드·검증·prune 단계에서 `Response body object should not be disturbed or locked` 오류로 실패했다. 이 run에서는 실제 Blob 저장 여부를 아직 확인하지 못했다. 현재 `SUPABASE_BACKUP_ENABLED=false`다. Secret 값은 읽거나 문서에 기록하지 않았다. 백업 스크립트의 성공 후 임시 파일 정리 오류는 재현 테스트를 먼저 실패시킨 뒤 script-level cleanup state로 수정했으며 `scripts/backup/supabase-backup.cleanup.test.sh`가 통과한다.
 - **검증 기록 (2026-09-27):** 이전 Actions run `36310483174`는 `SUPABASE_DB_URL`의 TLS 설정 누락으로 configuration 단계에서 끝났다. TLS 옵션을 수정한 뒤 run `36310791543`은 TLS 검사를 통과했으나 `pg_dump`가 비밀번호의 URI 인코딩 오류로 중단됐다. 그 공개 저장소 실행 로그에 비밀번호 일부가 포함되어 해당 run과 로그를 삭제했다. dump·Blob 업로드·30일 prune은 실행되지 않았다. 이후 사용자가 승인해 Dashboard에서 DB 비밀번호를 회전했고 `SUPABASE_DB_URL` secret을 새 URL로 갱신했다. 10:05 UTC secret 갱신 시각을 확인했다. run `36311596851`은 DB snapshot까지 성공했으나 Blob 단계에서 응답 본문 오류로 실패했다. `63ede69`의 단계 로그를 반영한 run `36311990002`는 암호화 snapshot 업로드와 private Blob 목록/크기 검증에 성공했으며, 2,045 bytes와 만료 항목 0개 삭제를 확인했다. `SUPABASE_BACKUP_ENABLED=true`로 매일 예약을 활성화했다. Secret 값은 읽거나 문서에 기록하지 않았다. 백업 스크립트의 성공 후 임시 파일 정리 오류는 재현 테스트를 먼저 실패시킨 뒤 script-level cleanup state로 수정했으며 `scripts/backup/supabase-backup.cleanup.test.sh`가 통과한다.
-- **완료 기준:** 별도 Free 프로젝트에서 실제 복구 리허설과 데이터·RLS·trigger 검증을 통과해야 I-718을 완료 처리한다. 개인정보 안내 문구는 사용자가 검토 중인 별도 출시 gate다. 이 작업은 Vercel 배포에 필요하지 않다.
-- **복구 대상 생성 (2026-09-27):** 사용자가 선택한 `SH's Org`에 `health-record-restore`를 서울(`ap-northeast-2`) 리전으로 생성했다. 프로젝트 ref는 `wwkuktblvadeynufjllk`, 상태는 `ACTIVE_HEALTHY`, 비용 확인 결과는 월 $0이다. 아직 백업을 복원하지 않았다.
-- **남은 복구 gate:** 비공개 Vercel Blob에서 암호화 `.age` 파일을 내려받아 이 빈 프로젝트에 적용한 뒤 Auth 사용자·앱 데이터·RLS·trigger·RPC·참조 무결성을 검증한다. 복구 전용 계정 비밀과 백업 데이터는 저장소 문서에 기록하지 않는다. 개인정보 안내 문구는 사용자가 검토 중인 별도 출시 gate다. 따라서 I-718은 완료 처리하지 않는다. 이 작업은 Vercel 배포에 필요하지 않다.
+- **완료 기준:** 별도 Free 프로젝트에서 실제 복구 리허설과 데이터·RLS·trigger 검증을 통과해야 I-718을 완료 처리한다. 이 기준은 2026-09-27 실제 복구로 충족했다. 개인정보 안내 문구는 사용자가 검토 중인 별도 출시 gate다. 이 작업은 Vercel 배포에 필요하지 않다.
+- **복구 대상 생성 (2026-09-27):** 사용자가 선택한 `SH's Org`에 `health-record-restore`를 서울(`ap-northeast-2`) 리전으로 생성했다. 프로젝트 ref는 `wwkuktblvadeynufjllk`, 상태는 `ACTIVE_HEALTHY`, 비용 확인 결과는 월 $0이다. 실제 복구 결과는 아래 리허설 기록에 남겼다.
+- **실제 복구 리허설 완료 (2026-09-27):** 사용자가 내려받은 `supabase-20260927T101631Z-63ede6948e3b.tar.gz.age`의 암호화·manifest·원본 commit `63ede6948e3b95c3d9b34a8f364aefad7bdd68ae`를 확인했다. 해당 commit의 격리 worktree에서 빈 복구 프로젝트를 확인하고 13개 migration을 적용한 뒤 데이터를 복원했다. 스크립트의 검증과 별도 집계 쿼리에서 Auth/app 데이터 존재, public 테이블 6개의 RLS, Auth 생성 trigger, `retry_daily_summary` RPC, Auth 및 앱 데이터 참조 무결성을 확인했다. 집계 외 행 내용은 조회하지 않았고 비밀번호·개인키·건강 기록 내용을 저장소 문서에 기록하지 않았다. Auth session은 제외되어 사용자가 다시 로그인해야 한다.
 
 ### I-716 배포 확인 (2026-09-27)
 
@@ -377,7 +377,7 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 - Production 동의 화면에서 필수 체크와 저장을 진행했다. 이후 `/api/profile`이 `consentVersion: 2026-09-27-v2`를 반환했다.
 - 오늘 기록 화면에서 실제 건강 상태가 아닌 고유 테스트 문구를 입력해 메시지 저장을 확인했다. 상세 조회는 200, 기록은 `draft`, revision 1, 테스트 메시지 1개였다.
 - 해당 메시지 ID만 DELETE해 204를 확인했다. 정리 후 오늘 목록은 0건, 상세 조회는 404였고, 프로필의 동의 버전은 v2로 유지됐다. 계정 이메일과 테스트 문구 원문은 저장소 문서에 기록하지 않았다.
-- **Vercel 배포 범위의 I-716은 완료다.** 실제 OAuth·동의·기록 흐름을 통과했다. I-718 백업 복구와 email/password 회원가입 정책은 별도의 전체 출시 판단으로 남아 있다.
+- **Vercel 배포 범위의 I-716은 완료다.** 실제 OAuth·동의·기록 흐름을 통과했다. I-718 백업 복구도 완료했으며, email/password 회원가입 정책은 별도의 전체 출시 판단으로 남아 있다.
 
 ### 남은 3건 처리 결과 (2026-09-26 당시 기록)
 
