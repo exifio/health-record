@@ -342,7 +342,7 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 - [x] **I-713** 삭제 확인 전체 흐름 검증
 - [x] **I-714** 개인정보/AI 처리 안내 문구 — **완료(2026-09-27).** 고지 문구 승인 + OpenAI 정책 근거 확인(v1→v2 재동의 실사용자 검증) + 서버 측 기록 작성 강제(B10/B11)까지 마감
 - [x] **I-715** Production 환경변수 — 7/7 등록, `OPENAI_API_KEY` Production 등록 확인(값 비노출)
-- [!] **I-716** 배포 준비 완료 표시 — Vercel 배포·환경변수·Cron·rate limit은 확인됐지만 현재 Production은 동의 UI가 추가되기 전 revision이다. DB에는 B11(v2)이 적용되어 있으나 `/onboarding/health-consent`는 Production에서 404이므로 앱 배포와 실제 로그인→동의→기록 저장 흐름 검증이 필요하다. I-718 Auth 포함 복구 검증, email/password 회원가입, 실제 백업 보존 정책 결정도 남아 있어 완료 표시하지 않음
+- [!] **I-716** 배포 준비 완료 표시 — consent UI가 Production에 배포됐고 공개 페이지 응답도 확인했다. 실제 OAuth→동의 저장→기록 생성 흐름은 아직 검증하지 못했다. I-718 Auth 포함 복구 검증, email/password 회원가입, 실제 백업 보존 정책 결정도 남아 있어 완료 표시하지 않음
 - [x] **I-717** B-613 rate limit — Firewall 활성화와 12개 유효 규칙, 실제 429 및 본문을 확인함 (`docs/SECURITY.md` 10절)
 - [~] **I-718** Supabase Free 백업 — 저장소 자동화와 Auth-aware 복구 스크립트 구현; R2/DB 자격 증명과 운영 복구 리허설 대기
 
@@ -355,6 +355,12 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 - age 개인 키는 로컬 `~/.config/health-record/backup-age-identity.txt`에 권한 `600`으로 생성했고, 공개 수신자 `AGE_RECIPIENT`만 GitHub repository variable에 등록했다. 개인 키는 GitHub에 두지 않는다.
 - synthetic PostgreSQL source/restore rehearsal에서 `auth.users`, `auth.identities`, profile, daily record, message, summary, suggestion, correction 데이터를 같은 dump로 복원했다. 복원 후 Auth 트리거가 중복 profile을 만들지 않는 것도 확인했다.
 - **남은 운영 gate:** `SUPABASE_DB_URL`, 비공개 R2 bucket, `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, 그리고 `SUPABASE_BACKUP_ENABLED=true`가 필요하다. 저장 위치·국외 이전과 30일 보존 승인 전에는 R2 bucket 생성이나 자동 삭제를 활성화하지 않는다. 현재 DB URL과 R2 계정/자격 증명은 이 세션에 없어 Production upload와 새 Supabase Free 프로젝트 복구 리허설은 수행하지 않았다. 따라서 I-718은 완료 처리하지 않는다.
+
+### I-716 배포 확인 (2026-09-27)
+
+- Commit `124f18b`를 공개 GitHub `main`에 push했고 Vercel Production 배포 `dpl_C41xz95VDcrMRRkYnMwwtEUDjkkn`이 `Ready`가 됐다.
+- `https://health-record-one.vercel.app/`, `/onboarding/health-consent`, `/settings/privacy`가 각각 HTTP 200을 반환한다. DB에는 B9-B11이 이미 적용돼 있다.
+- 익명 GET에서 페이지 route만 확인했다. OAuth 로그인, v2 동의 저장, 동의 뒤 실제 기록 생성의 연속 흐름은 검증하지 않았으므로 I-716을 완료 처리하지 않는다.
 
 ### 남은 3건 처리 결과 (2026-09-26 당시 기록)
 
