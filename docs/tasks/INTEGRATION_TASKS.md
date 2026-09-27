@@ -357,7 +357,7 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 - GitHub repository variable `AGE_RECIPIENT`는 이미 등록돼 있다. `SUPABASE_DB_URL` secret은 존재하지만 workflow가 요구하는 `sslmode=require`, `sslmode=verify-ca`, `sslmode=verify-full` 중 하나가 확인되지 않았다. 검증 동안 `SUPABASE_BACKUP_ENABLED=false`로 두며 DB 연결 URL은 저장소에 기록하지 않는다.
 - Vercel Blob은 사용량 기반으로 청구되며 플랜별 포함량을 넘으면 비용이 발생할 수 있다. 실제 덤프 크기를 확인한 뒤 Vercel usage에서 확인한다([Vercel Blob 가격](https://vercel.com/docs/vercel-blob/usage-and-pricing)).
 - synthetic PostgreSQL source/restore rehearsal에서 `auth.users`, `auth.identities`, profile, daily record, message, summary, suggestion, correction 데이터를 같은 dump로 복원했다. 복원 후 Auth 트리거가 중복 profile을 만들지 않는 것도 확인했다.
-- **검증 기록 (2026-09-27):** `SUPABASE_DB_URL` secret이 09:29 UTC에 갱신된 뒤 실행한 Actions run `36309606194`도 `Check backup configuration` 단계에서 `SUPABASE_DB_URL must enable TLS`로 중단됐다. DB 접속·dump·Blob 업로드·삭제 단계는 실행되지 않았다. `SUPABASE_BACKUP_ENABLED`는 `false`로 두었다. Secret 값 자체는 읽거나 출력하지 않았다. 이전 동일 검증 실패: `36308665590`, `36308828931`, `36309138544`, `36309400175`.
+- **검증 기록 (2026-09-27):** `SUPABASE_DB_URL` secret이 09:46 UTC에 갱신된 뒤 실행한 Actions run `36310483174`도 `Check backup configuration` 단계에서 `SUPABASE_DB_URL must enable TLS`로 중단됐다. DB 접속·dump·Blob 업로드·삭제 단계는 실행되지 않았다. `SUPABASE_BACKUP_ENABLED`는 `false`로 두었다. Secret 값 자체는 읽거나 출력하지 않았다. 이전 동일 검증 실패: `36308665590`, `36308828931`, `36309138544`, `36309400175`, `36309606194`.
 - **남은 운영 gate:** `SUPABASE_DB_URL` secret에 TLS 연결 옵션을 반영해 사전 검증을 통과시킨 뒤 Production 암호화 백업 1건 업로드·목록 확인, 새 빈 Supabase Free 프로젝트로 복구해 Auth 사용자·앱 데이터·RLS·trigger를 검증한다. 개인정보 안내에 30일 보존과 저장 위치를 반영하는 작업은 별도 보류다. 따라서 I-718은 완료 처리하지 않는다. 이 작업은 Vercel 배포에 필요하지 않다.
 
 ### I-716 배포 확인 (2026-09-27)
