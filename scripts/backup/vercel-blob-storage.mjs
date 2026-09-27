@@ -54,12 +54,14 @@ async function uploadBackup(filePath, pathname) {
   }
 
   const fileSize = (await stat(filePath)).size;
+  process.stdout.write('Uploading encrypted backup to private Vercel Blob.\n');
   const uploaded = await put(pathname, Readable.toWeb(createReadStream(filePath)), {
     access: 'private',
     contentType: 'application/octet-stream',
     token,
   });
 
+  process.stdout.write('Checking the uploaded backup in the private Blob listing.\n');
   const blobs = await listBackups(token);
   const verified = blobs.find((blob) => blob.pathname === uploaded.pathname);
   if (!verified || verified.size !== fileSize) {
@@ -67,7 +69,10 @@ async function uploadBackup(filePath, pathname) {
   }
 
   const expired = expiredBackupPathnames(blobs);
-  if (expired.length > 0) await del(expired, { token });
+  if (expired.length > 0) {
+    process.stdout.write(`Removing ${expired.length} expired backup(s).\n`);
+    await del(expired, { token });
+  }
 
   process.stdout.write(`Uploaded and verified encrypted backup (${fileSize} bytes); removed ${expired.length} expired backups.\n`);
 }
