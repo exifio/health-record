@@ -6,6 +6,15 @@ readonly POSTGRES_CLIENT_IMAGE="postgres:17-alpine"
 readonly SUPABASE_CLI_VERSION="2.118.0"
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+cleanup_work_dir=''
+cleanup_partial_archive=''
+
+cleanup_temporary_files() {
+  [[ -z "$cleanup_work_dir" ]] || rm -rf -- "$cleanup_work_dir"
+  [[ -z "$cleanup_partial_archive" ]] || rm -f -- "$cleanup_partial_archive"
+}
+
+trap cleanup_temporary_files EXIT
 
 fail() {
   printf 'supabase-backup: %s\n' "$1" >&2
@@ -45,8 +54,9 @@ create_backup() {
     "$repo_root/"*) fail 'backup output must be outside the public repository' ;;
   esac
   work_dir="$(mktemp -d "${TMPDIR:-/tmp}/health-record-backup.XXXXXX")"
+  cleanup_work_dir="$work_dir"
   partial_archive="$output_dir/${archive_name}.partial"
-  trap 'rm -rf -- "$work_dir"; rm -f -- "$partial_archive"' EXIT
+  cleanup_partial_archive="$partial_archive"
   case "$work_dir/" in
     "$repo_root/"*) fail 'plaintext backup data must stay outside the public repository' ;;
   esac
@@ -124,7 +134,7 @@ restore_backup() {
   done
 
   work_dir="$(mktemp -d "${TMPDIR:-/tmp}/health-record-restore.XXXXXX")"
-  trap 'rm -rf -- "$work_dir"' EXIT
+  cleanup_work_dir="$work_dir"
   listing="$work_dir/archive-files.txt"
   expected_listing="$work_dir/expected-files.txt"
 
