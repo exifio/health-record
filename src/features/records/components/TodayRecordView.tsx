@@ -60,36 +60,29 @@ export function TodayRecordView() {
     async function loadInitialData() {
       // F-106 / I-106: 비로그인·둘러보기는 샘플(Mock) 오늘 기록을 그대로 보여 준다.
       // 실제 사용자 API는 로그인 상태에서만 호출된다(AuthAwareHealthApiProvider).
+      //
+      // 제안(suggestions)은 AI 호출이라 수 초 걸릴 수 있으므로 여기서 기다리지 않는다.
+      // F-305 / F-306: 제안은 화면을 막지 않는 백그라운드 갱신이다.
       try {
-        const [recordRes, suggestionsRes] = await Promise.allSettled([
-          api.getDailyRecord(todayDate),
-          api.getSuggestions(todayDate),
-        ]);
-
+        const res = await api.getDailyRecord(todayDate);
         if (ignore) return;
-
-        if (recordRes.status === "fulfilled") {
-          setRecord(recordRes.value.record);
-          setMessages(recordRes.value.record.messages);
+        setRecord(res.record);
+        setMessages(res.record.messages);
+      } catch (err: unknown) {
+        if (ignore) return;
+        // I-201: 실제 API의 404 메시지 문자열이 아니라 contract error code로 판단한다.
+        if (isApiError(err, API_ERROR_CODES.recordNotFound)) {
+          setRecord(null);
+          setMessages([]);
         } else {
-          // I-201: 실제 API의 404 메시지 문자열이 아니라 contract error code로 판단한다.
-          if (isApiError(recordRes.reason, API_ERROR_CODES.recordNotFound)) {
-            setRecord(null);
-            setMessages([]);
-          } else {
-            setError("오늘 기록을 불러오지 못했습니다. 다시 시도해주세요.");
-          }
-        }
-
-        if (suggestionsRes.status === "fulfilled") {
-          setSuggestions(suggestionsRes.value.suggestions || []);
-        } else {
-          setSuggestions([]);
+          setError("오늘 기록을 불러오지 못했습니다. 다시 시도해주세요.");
         }
       } finally {
         if (!ignore) {
           setIsLoading(false);
         }
+        // 기록이 그려진 뒤 제안을 뒤이어 채운다(화면을 기다리게 하지 않는다).
+        refreshSuggestions();
       }
     }
 
@@ -98,34 +91,28 @@ export function TodayRecordView() {
     return () => {
       ignore = true;
     };
-  }, [api, todayDate]);
+  }, [api, todayDate, refreshSuggestions]);
 
   const handleRetry = () => {
     setIsLoading(true);
     setError(null);
-    Promise.allSettled([
-      api.getDailyRecord(todayDate),
-      api.getSuggestions(todayDate),
-    ]).then(([recordRes, suggestionsRes]) => {
-      if (recordRes.status === "fulfilled") {
-        setRecord(recordRes.value.record);
-        setMessages(recordRes.value.record.messages);
-      } else {
-        if (isApiError(recordRes.reason, API_ERROR_CODES.recordNotFound)) {
+    api.getDailyRecord(todayDate)
+      .then((res) => {
+        setRecord(res.record);
+        setMessages(res.record.messages);
+      })
+      .catch((err: unknown) => {
+        if (isApiError(err, API_ERROR_CODES.recordNotFound)) {
           setRecord(null);
           setMessages([]);
         } else {
           setError("오늘 기록을 불러오지 못했습니다. 다시 시도해주세요.");
         }
-      }
-
-      if (suggestionsRes.status === "fulfilled") {
-        setSuggestions(suggestionsRes.value.suggestions || []);
-      } else {
-        setSuggestions([]);
-      }
-      setIsLoading(false);
-    });
+      })
+      .finally(() => {
+        setIsLoading(false);
+        refreshSuggestions();
+      });
   };
 
   // I-403: 서버에서 이미 확정된 기록으로 바뀐 경우 원문 편집 시도가 409로 거절된다.
