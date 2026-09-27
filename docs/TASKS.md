@@ -70,7 +70,8 @@
 | 백엔드 | 완료 | `docs/tasks/BACKEND_TASKS.md` |
 | 통합 | 완료 (I-716 Production smoke, I-717 rate limit, I-718 백업·복구 리허설 검증 완료) | `docs/tasks/INTEGRATION_TASKS.md` |
 | Vercel Production 배포 | 완료 (실제 계정 흐름 smoke 통과) | `docs/tasks/INTEGRATION_TASKS.md` |
-| 최종 QA / 전체 출시 | 보류 (email/password 회원가입 정책, 백업 보존 고지 문구 최종 반영 대기) | `docs/tasks/INTEGRATION_TASKS.md` |
+| 최종 QA | 완료 (I-701~I-718 검증과 Production smoke 완료) | `docs/tasks/INTEGRATION_TASKS.md` |
+| 전체 공개 결정 | 보류 (email/password 회원가입 정책, 백업 보존 고지의 구체 문구 검토 대기) | `docs/tasks/INTEGRATION_TASKS.md` |
 
 상태는 각 상세 TASK 문서의 실제 진행 상황에 맞춰 갱신합니다.
 
@@ -106,10 +107,11 @@
   - 이유: "그날 아무것도 기록하지 않았다"는 사실이 지워지면 기록이 없는 날짜를 증상이 없었던 날로 해석하게 되어 PRD 원칙에 어긋납니다.
   - 오늘 날짜의 첫 기록과 이미 존재하는 과거 draft record에 대한 추가는 그대로 허용합니다. 확정된 과거 기록에 남기는 정정은 12절 경로를 씁니다.
   - 마이그레이션 `20260926100000_b8_no_backfill_past_dates.sql`, 오류 코드 `RECORD_DATE_NOT_WRITABLE`(400), 원격 DB 적용 및 실제 사용자 세션으로 3개 케이스(오늘 생성 200 / 미기록 과거 400 / 기존 과거 추가 200) 검증 완료.
-- [x] ~~공개 전 개인정보 / AI 처리 안내 최종 문구~~ → **종결(2026-09-27).** 문구 승인 + OpenAI 정책 근거 확인 완료 — **결정(2026-09-26): 구현 작업이 모두 끝난 뒤 최종 확인한다. 확인 시점은 I7(최종 QA) 이후 공개 직전이며, 대상은 `src/components/settings`의 안내 UI와 PRD 9.x 대조다.**
-  - **상태 갱신(2026-09-27, 종결):** 결락 고지 2건(외부 AI 처리자로 기록이 전송된다는 사실, 삭제 후 백업 보존)을 `/settings/privacy` 상세 페이지로 옮겨 반영했고, PRD 9-3 동의는 로그인 뒤 첫 기록 시작 시 전용 페이지(`/onboarding/health-consent`)에서 받도록 구현해 실사용자 세션으로 검증했다. B9/B10/B11 마이그레이션(`profiles.consent_version`/`consented_at`, RPC 서버 측 강제)과 `reason: "consent"` 규칙을 적용했다. **"학습에 사용되지 않습니다"는 OpenAI 공식 문서로 확인**해 악용 모니터링 보관 "최대 30일"과 출처 링크를 넣었고, 문구가 바뀐 만큼 동의 버전을 v1→v2로 올려 재동의까지 실사용자로 검증했다. 상세는 `docs/tasks/INTEGRATION_TASKS.md`의 I-714 진행 기록.
-  - **사람의 결정이 남았다:** ① email/password 회원가입 유지 여부 ② 백업 보존 안내 문구의 최종 반영(수단·기간은 I-718에서 Vercel Blob private `icn1`, 30일로 승인; 2026-09-27 실제 복구 리허설 통과) ③ R2 데이터 위치·국외 이전 고지. **I-714 자체의 결락 사유 2건(문구 승인·OpenAI 정책 근거)은 2026-09-27에 모두 해결**했다. 미동의 계정의 기록 작성 차단은 B10/B11로 **구현 완료**했다(조회·삭제는 열어 둠).
-  - **사용자 결정(2026-09-27): Supabase Free를 유지한다.** 현재 공식 문서상 Free에는 포함된 자동 백업과 대시보드에서 내려받을 수 있는 백업이 없다. 별도 FAQ는 현재 Free 프로젝트에도 최대 7개의 일일 백업이 만들어져 유료 플랜으로 올린 뒤 제공될 수 있지만 향후 중단될 수 있다고 설명한다. Supabase는 Free 프로젝트에 정기 `db dump`와 off-site 백업을 권한다. 프로젝트에 실제 백업이 있는지/얼마나 보존되는지 확인하지 않았으므로 기간 숫자를 고지에 넣지 않는다([백업 안내](https://supabase.com/docs/guides/platform/backups), [FAQ](https://supabase.com/docs/guides/troubleshooting/will-backups-be-accessible-from-the-dashboard-immediately-after-upgrading-to-a-paid-plan-hXY4rs)). email/Google Auth는 켜져 있고 signup도 허용되어 있다. Free에서는 유출 비밀번호 보호를 사용할 수 없으므로, email signup을 유지할지 공개 전 결정한다([공식 문서](https://supabase.com/docs/guides/auth/password-security)).
+- [x] ~~I-714 개인정보/AI 처리 동의 안내~~ → **완료(2026-09-27).** OpenAI 처리 안내와 정책 근거를 반영하고, 동의 버전 v1→v2 변경 및 실사용자 재동의를 검증했다. 미동의 계정의 기록 작성 차단은 B10/B11로 구현했다. 상세는 `docs/tasks/INTEGRATION_TASKS.md`의 I-714 진행 기록.
+  - `/settings/privacy`에는 삭제 데이터가 시스템 백업에 일정 기간 남을 수 있다는 일반 안내가 있다. I-714는 완료됐지만, I-718에서 확정한 백업 제공자와 보존 정책을 구체적으로 밝히는 문구는 별도 출시 검토 항목이다.
+- [!] **email/password 회원가입 정책 결정 필요.** 현재 이메일 가입이 허용되어 있다. Supabase Free에서는 유출 비밀번호 보호를 사용할 수 없다([공식 문서](https://supabase.com/docs/guides/auth/password-security)). 공개 전에 이메일 가입을 유지할지, Google 로그인만 허용하도록 끌지 결정한다.
+- [x] ~~Supabase Free 백업 방식 및 제공자 결정~~ → **완료(2026-09-27).** Supabase Free를 유지하고, GitHub Actions에서 매일 DB 백업을 생성해 age로 암호화한 뒤 Vercel Blob 비공개 저장소 `health-record-supabase-backups`(`icn1`, 서울)에 저장한다. 30일 보존 정책과 별도 Free 프로젝트 복구 리허설을 승인·검증했다(I-718). Cloudflare/R2는 사용하지 않는다.
+- [!] **백업 보존 고지 문구 최종 검토 필요.** 현재 `/settings/privacy` 문구는 보존 기간을 구체적으로 쓰지 않는다. PRD 3.5는 실제 백업 정책을 공개 전에 고지하도록 요구한다. 선택지는 ① 현재 승인된 Vercel Blob 비공개 저장소, 서울 리전(`icn1`), 30일 보존 정책을 안내문에 명시하거나 ② 사용자가 원하는 다른 문구를 정하는 것이다. 백업 구현이나 설정을 다시 할 일은 아니다.
 - [x] ~~운영 오류 모니터링 / Analytics 도구~~ → **결정(2026-09-26): MVP에서 도입하지 않는다.**
   - 현재 의존성·SDK가 없고, 코드 로깅은 실패 단계 코드 1곳뿐이며 본문 전송이 없다. 공개 전까지 외부 도구를 붙이지 않으면 안전하게 닫힌다.
   - 나중에 도입할 때의 조건은 `docs/SECURITY.md` 6절(허용/금지 로그 항목, request body 자동 수집 차단)에 이미 적혀 있다.
