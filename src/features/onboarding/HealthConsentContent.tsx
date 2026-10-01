@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RecordsShell } from "@/components/layout/RecordsShell";
 import { useAuth } from "@/features/auth/auth-context";
-import { sanitizeNextPath } from "@/server/auth/redirects";
+import { sanitizeNextPath, JUST_LOGGED_IN_COOKIE } from "@/server/auth/redirects";
 import { CURRENT_CONSENT_VERSION } from "@/contracts";
+import { grantAnalyticsConsent, track } from "@/features/analytics/analytics";
 
 const NEXT_PARAM = "next";
 
@@ -52,6 +53,12 @@ export function HealthConsentContent() {
     try {
       await recordConsent(CURRENT_CONSENT_VERSION);
       router.push(next);
+      // 첫 로그인이 여기서 끝나는 경우가 많다. cookie 표식이 남아 있으면 login_completed 소모.
+      grantAnalyticsConsent();
+      if (document.cookie.includes(`${JUST_LOGGED_IN_COOKIE}=`)) {
+        document.cookie = `${JUST_LOGGED_IN_COOKIE}=; Path=/; Max-Age=0`;
+        track("login_completed");
+      }
     } catch {
       // 저장이 안 되면 이동하지 않는다. 카드로 돌아가 재시도하게 한다.
       setError("동의 저장에 실패했습니다. 다시 시도해주세요.");

@@ -75,6 +75,15 @@ RLS는 개발 초기에 켜고 마지막에 추가하지 않습니다.
 
 오류 모니터링 도구를 도입한다면 request body 자동 수집을 끄거나 health API path를 scrub합니다.
 
+### Amplitude 제품 분석
+
+- Amplitude는 제품 사용 분석에만 사용합니다. 별도 오류 모니터링 도구 도입은 이 결정에 포함하지 않습니다.
+- 공개 환경에서 이벤트를 보내기 전에 개인정보 처리방침, 고지·동의 요건, 데이터 처리 지역과 보존 범위를 검토하고 문서화합니다. 검토가 끝나기 전에는 수집을 비활성화합니다.
+- 명시된 이벤트·속성 allowlist만 보냅니다. 자동 수집, 자동 page view, autocapture, session replay, 네트워크 요청/오류 payload 수집은 끕니다.
+- 건강 원문, AI prompt/response, 요약·제안·정정, 증상·복약 정보, 기록 날짜·ID, API request/response body, URL path/query, 인증 사용자 ID와 내부 식별자를 전송하거나 Amplitude 사용자 프로필에 연결하지 않습니다.
+- 어떤 이벤트에도 허용 목록 밖의 값을 추가하지 않습니다. pseudonymous ID나 cookie 기반 식별을 쓰려면 별도 개인정보 검토와 고지·동의 판단을 먼저 기록합니다.
+- SDK 비활성화 또는 전송 실패가 로그인, 기록 저장·수정·확정 등 핵심 흐름을 막아서는 안 됩니다.
+
 ## 7. Demo Mode
 
 - demo 입력을 실제 API에 전송하지 않음

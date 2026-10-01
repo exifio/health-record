@@ -66,12 +66,12 @@
 | 영역 | 상태 | 상세 문서 |
 |---|---|---|
 | 공통 기반 | 완료 | 이 문서의 `0. 공통 선행 작업` |
-| 프론트엔드 | 완료 | `docs/tasks/FRONTEND_TASKS.md` |
+| 프론트엔드 | 기존 MVP 완료, Amplitude F-901 대기 | `docs/tasks/FRONTEND_TASKS.md` |
 | 백엔드 | 완료 | `docs/tasks/BACKEND_TASKS.md` |
-| 통합 | 완료 (I-716 Production smoke, I-717 rate limit, I-718 백업·복구 리허설 검증 완료) | `docs/tasks/INTEGRATION_TASKS.md` |
+| 통합 | 기존 통합 완료 (I-716~I-718), Amplitude I-719 대기 | `docs/tasks/INTEGRATION_TASKS.md` |
 | Vercel Production 배포 | 완료 (실제 계정 흐름 smoke 통과) | `docs/tasks/INTEGRATION_TASKS.md` |
-| 최종 QA | 완료 (I-701~I-718 검증과 Production smoke 완료) | `docs/tasks/INTEGRATION_TASKS.md` |
-| 전체 공개 결정 | 보류 (email/password 회원가입 정책, 백업 보존 고지의 구체 문구 검토 대기) | `docs/tasks/INTEGRATION_TASKS.md` |
+| 최종 QA | 기존 MVP 완료 (I-701~I-718), Amplitude I-719 검증 대기 | `docs/tasks/INTEGRATION_TASKS.md` |
+| 전체 공개 결정 | 보류 (email/password 정책, 백업 고지, Amplitude 개인정보 검토 대기) | `docs/tasks/INTEGRATION_TASKS.md` |
 
 상태는 각 상세 TASK 문서의 실제 진행 상황에 맞춰 갱신합니다.
 
@@ -112,9 +112,9 @@
 - [!] **email/password 회원가입 정책 결정 필요.** 현재 이메일 가입이 허용되어 있다. Supabase Free에서는 유출 비밀번호 보호를 사용할 수 없다([공식 문서](https://supabase.com/docs/guides/auth/password-security)). 공개 전에 이메일 가입을 유지할지, Google 로그인만 허용하도록 끌지 결정한다.
 - [x] ~~Supabase Free 백업 방식 및 제공자 결정~~ → **완료(2026-09-27).** Supabase Free를 유지하고, GitHub Actions에서 매일 DB 백업을 생성해 age로 암호화한 뒤 Vercel Blob 비공개 저장소 `health-record-supabase-backups`(`icn1`, 서울)에 저장한다. 30일 보존 정책과 별도 Free 프로젝트 복구 리허설을 승인·검증했다(I-718). Cloudflare/R2는 사용하지 않는다.
 - [!] **백업 보존 고지 문구 최종 검토 필요.** 현재 `/settings/privacy` 문구는 보존 기간을 구체적으로 쓰지 않는다. PRD 3.5는 실제 백업 정책을 공개 전에 고지하도록 요구한다. 선택지는 ① 현재 승인된 Vercel Blob 비공개 저장소, 서울 리전(`icn1`), 30일 보존 정책을 안내문에 명시하거나 ② 사용자가 원하는 다른 문구를 정하는 것이다. 백업 구현이나 설정을 다시 할 일은 아니다.
-- [x] ~~운영 오류 모니터링 / Analytics 도구~~ → **결정(2026-09-26): MVP에서 도입하지 않는다.**
-  - 현재 의존성·SDK가 없고, 코드 로깅은 실패 단계 코드 1곳뿐이며 본문 전송이 없다. 공개 전까지 외부 도구를 붙이지 않으면 안전하게 닫힌다.
-  - 나중에 도입할 때의 조건은 `docs/SECURITY.md` 6절(허용/금지 로그 항목, request body 자동 수집 차단)에 이미 적혀 있다.
+- [x] ~~운영 분석 도구 도입 여부~~ → **결정(2026-09-30): Amplitude 제품 분석 도입을 허용한다.** 오류 모니터링 도입은 포함하지 않는다.
+  - Amplitude 도입은 명시적 이벤트·속성 allowlist, 건강정보·식별자 제외, 자동 수집 비활성화, 공개 전 개인정보 처리방침 및 고지·동의 검토를 조건으로 한다(`docs/SECURITY.md` 6절).
+  - 구현은 F-901, Amplitude 프로젝트 설정 및 최종 payload/release 검증은 I-719에서 진행한다. 검토 완료 전 Production 수집은 켜지 않는다.
 - [x] ~~B-613 Vercel rate limit~~ → **결정(2026-09-26): Vercel Firewall로 적용하고, 규칙은 문서로 확정.**
   - 경로별 목표 한도·429 정책·검증 순서를 `docs/SECURITY.md` 10절에 확정했다. 앱 코드에는 넣지 않는다.
   - **실계정 갱신(2026-09-27):** 처음에는 규칙 12개만 저장되고 Firewall 자체는 꺼져 있어 이를 켰다. 12개 규칙을 active/valid로 확인했고, 내부 스케줄러 경로의 4회 허용/5회째 429 및 75바이트 비어 있지 않은 무-건강정보 본문을 I-717에서 확인했다.

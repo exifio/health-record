@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { DailyRecord, DailySummaryContent, LocalDate } from "@/contracts";
+import { track } from "@/features/analytics/analytics";
 import { API_ERROR_CODES, isApiError } from "@/features/records/api/health-api";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { LoadingState } from "@/components/common/LoadingState";
@@ -26,6 +27,18 @@ export interface DailySummaryCardProps {
  * I-401~I-404: 실패 이유를 error code로 안내한다.
  * 실제 Backend는 상태 충돌을 409 code로 구분해 돌려주므로 메시지 문자열에 의존하지 않는다.
  */
+/**
+ * 요약이 실제로 렌더될 때 summary_viewed 1회.
+ * "기록을 열었지만 요약이 아직 준비 안 된 경우"는 세지 않으므로
+ * 폴백 화면이 뜬 걸 요약 조회로 오인하지 않는다.
+ */
+function SummaryViewedTracker({ date, status }: { date: LocalDate; status: string }) {
+  useEffect(() => {
+    track("summary_viewed");
+  }, [date, status]);
+  return null;
+}
+
 function actionErrorMessage(error: unknown, fallback: string): string {
   if (isApiError(error, API_ERROR_CODES.summaryStale)) {
     return "원문이 바뀌어 최신 요약이 아닙니다. 다시 정리한 뒤 확정해 주세요.";
@@ -245,6 +258,7 @@ export function DailySummaryCard({
       {/* F-501 & F-502: Summary content display when ready or confirmed */}
       {(summaryStatus === "ready" || isConfirmed || summaryStatus === "stale") && record.summary && (
         <div className="summary-content-area" data-testid="summary-content-area">
+          <SummaryViewedTracker date={date} status={summaryStatus} />
           {/* F-502: AI Disclaimer Notice */}
           <div className="ai-disclaimer" data-testid="ai-disclaimer">
             <p>AI가 작성한 정리는 실제 기록과 다를 수 있습니다. 저장 전에 내용을 확인해주세요.</p>

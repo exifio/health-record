@@ -4,7 +4,8 @@ import React, { createContext, useContext, useState, useCallback, useMemo, useEf
 import { useRouter } from "next/navigation";
 import { getDefaultHealthApi } from "@/features/api/api-adapter";
 import { CURRENT_CONSENT_VERSION } from "@/contracts";
-import { CONSENT_PATH } from "@/server/auth/redirects";
+import { CONSENT_PATH, JUST_LOGGED_IN_COOKIE } from "@/server/auth/redirects";
+import { grantAnalyticsConsent, track } from "@/features/analytics/analytics";
 
 export type AuthStatus = "authenticated" | "unauthenticated" | "demo";
 
@@ -90,8 +91,18 @@ export function AuthProvider({
         if (ignore) return;
         setNeedsOnboarding(!profile.onboardingCompleted);
         setHasConsented(profile.consentVersion === CURRENT_CONSENT_VERSION);
+        // 서버 프로필이 동의 기준이다. 새로고침 후에도 이벤트 게이트가 풀리도록 여기서 알린다.
+        console.debug("[amp] getProfile ok", profile.consentVersion, "expected", CURRENT_CONSENT_VERSION);
+        if (profile.consentVersion === CURRENT_CONSENT_VERSION) grantAnalyticsConsent();
+        // 이번 방문이 실제 OAuth 로그인 복귀였으면 login_completed 1회.
+        // cookie는 즉시 지워 재전송/새로고침 시 중복 집계되지 않게 한다.
+        if (document.cookie.includes(`${JUST_LOGGED_IN_COOKIE}=`)) {
+          document.cookie = `${JUST_LOGGED_IN_COOKIE}=; Path=/; Max-Age=0`;
+          track("login_completed");
+        }
       })
-      .catch(() => {
+      .catch((e: unknown) => {
+        console.debug("[amp] getProfile FAILED", e);
         // 프로필 확인 실패는 온보딩 표시를 막지 않는다(원문 저장과 분리).
         if (!ignore) setNeedsOnboarding(false);
       })

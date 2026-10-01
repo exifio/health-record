@@ -345,6 +345,11 @@ Contract/product 정책 변경은 없다(`docs/API.md`, `src/contracts/**` 미�
 - [x] **I-716** Vercel Production 배포 및 실제 계정 smoke — Google OAuth→v2 동의 저장→기록 생성과 테스트 데이터 정리를 2026-09-27에 확인했다. Vercel 배포 범위는 완료. 별도 작업인 I-718 백업 복구도 완료했으며, email/password 회원가입 정책은 전체 출시 판단으로 남아 있다.
 - [x] **I-717** B-613 rate limit — Firewall 활성화와 12개 유효 규칙, 실제 429 및 본문을 확인함 (`docs/SECURITY.md` 10절)
 - [x] **I-718** Supabase Free 백업 — Vercel Blob 비공개 저장소(`icn1`, 서울)와 30일 보존, 매일 백업, 별도 Free 프로젝트 복구까지 검증했다. 2026-09-27 Actions run `36311990002`의 2,045 bytes 암호화 백업을 복구 프로젝트에 적용했고, 13개 migration·Auth 및 앱 데이터·RLS·trigger·RPC·참조 무결성 검증을 통과했다. Auth 세션은 백업 대상이 아니므로 복구 뒤 다시 로그인해야 한다. 백업 제공자와 보존 기간을 사용자에게 구체적으로 고지하는 문구는 별도의 전체 공개 검토 항목이며, I-718은 Vercel Production 배포와 별개다.
+- [ ] **I-719** Amplitude 프로젝트 설정 및 Production 수집 release gate
+  - 접근 권한이 있는 Amplitude 프로젝트를 준비하고, 콘솔 설정은 사용자 로그인 세션이 허용하면 Aside MCP를 사용할 수 있다. 앱 SDK 연동은 F-901에서 진행한다.
+  - 설정명만 문서화하고 API key/secret 값은 저장소에 기록하지 않는다.
+  - F-901의 allowlist만 synthetic 데이터로 검증하고, 건강정보·실사용자 계정/기록 식별자가 이벤트에 없는지 확인한다.
+  - 개인정보 처리방침, 고지·동의 요건, 데이터 처리 지역·보존 범위 검토를 기록하기 전에는 Production 수집을 활성화하지 않는다.
 
 ### I-718 진행 기록 (2026-09-27)
 

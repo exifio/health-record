@@ -81,6 +81,37 @@ export function PrivacyContent() {
           </p>
         </section>
 
+        {/* F-901 / SECURITY.md 6절: Amplitude 도입으로 제3자 제공자가 늘었으므로 고지한다.
+            문구는 "약속"이 아니라 "실제 전송되는 것"만 쓴다 — Amplitude 삭제를 연결하지
+            않았으므로 "삭제해 드립니다" 같은 문장은 넣지 않는다. */}
+        <section className="privacy-section" data-testid="privacy-section-analytics">
+          <h3 className="settings-section-title">사용 통계 분석</h3>
+          <p className="privacy-text">
+            서비스 개선을 위해 페이지 방문, 로그인, 기록 작성, 기록 확인 등 이용 행동을 익명으로 수집합니다.
+          </p>
+          <p className="privacy-text">
+            수집되는 정보는 익명 기기 식별자, 기기·접속 정보, 행동 구분자이며, 건강 기록 내용, 기록 날짜,
+            계정 정보는 수집하지 않습니다.
+          </p>
+          <p className="privacy-text">
+            수집 정보는 Amplitude 및 그 재처리자를 통해 미국에서 처리됩니다. 당사는 수집 데이터로 이용자를
+            식별하거나 이용자의 건강 상태를 파악하지 않습니다.
+          </p>
+          <p className="privacy-text">
+            이 분석 기능은 건강 기록 처리 동의를 승인한 이용자에 대해서만 작동합니다.
+          </p>
+          <p className="privacy-text">
+            <a
+              href="https://amplitude.com/subprocessor-list"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="consent-link"
+            >
+              Amplitude 재처리자 목록 확인
+            </a>
+          </p>
+        </section>
+
         <section className="privacy-section" data-testid="privacy-section-deletion">
           <h3 className="settings-section-title">기록 및 계정 삭제</h3>
           <p className="privacy-text">

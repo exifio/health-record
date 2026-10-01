@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/features/theme/theme-context";
+import { AnalyticsProvider } from "@/features/analytics/analytics-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -27,7 +28,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         />
       </head>
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <AnalyticsProvider />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

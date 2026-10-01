@@ -10,6 +10,13 @@
 export const CONSENT_PATH = "/onboarding/health-consent";
 export const DEFAULT_AFTER_AUTH_PATH = "/today";
 
+/**
+ * OAuth 복귀가 실제 로그인 1회였음을 클라이언트에 알리는 즉시 소모형 표식.
+ * 동의 여부나 건강 기록을 담지 않는다. sessionStorage/localStorage는 쓰지 않는다
+ * (PRD 9-3: 동의를 브라우저 storage에 복사하지 않는다).
+ */
+export const JUST_LOGGED_IN_COOKIE = "hr_just_logged_in";
+
 const ALLOWED_NEXT_PATHS: readonly string[] = [CONSENT_PATH];
 
 export function sanitizeNextPath(next: string | null | undefined): string {

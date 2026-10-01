@@ -9,6 +9,7 @@ import { useAuth } from "@/features/auth/auth-context";
 import { CONSENT_PATH } from "@/server/auth/redirects";
 import { RecordTimeline } from "@/components/records/RecordTimeline";
 import { RecordComposer } from "@/components/records/RecordComposer";
+import { track } from "@/features/analytics/analytics";
 import { SuggestionCard } from "@/components/records/SuggestionCard";
 import { LoadingState } from "@/components/common/LoadingState";
 import { ErrorState } from "@/components/common/ErrorState";
@@ -155,6 +156,7 @@ export function TodayRecordView() {
       }),
     );
 
+    track("record_created");
     setMessages((prev) => [...prev, res.message]);
     if (record) {
       setRecord({

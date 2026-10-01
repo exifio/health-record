@@ -222,6 +222,27 @@ src/mocks/**
 
 ---
 
+# F9. Amplitude 제품 분석
+
+- [~] **F-901** Amplitude 클라이언트 연동 및 allowlist 기반 이벤트 전송
+  - `docs/SECURITY.md` 6절의 개인정보·수집 제한을 따른다.
+  - 자동 page view, autocapture, session replay, 인증 사용자 ID 연결을 사용하지 않는다.
+  - 건강 원문·AI 입력/출력·증상/복약 정보·기록 날짜/ID·API body·URL path/query를 전송하지 않는다.
+  - 개인정보 처리방침 및 고지·동의 검토가 끝날 때까지 Production 수집을 비활성화한다(I-719).
+  - 설정이 없거나 전송이 실패해도 핵심 화면과 기록 흐름은 정상 동작한다.
+- **완료 기준:** 이벤트와 속성이 allowlist를 벗어나지 않고, 비활성 상태에서는 분석 요청이 없으며, 관련 테스트와 payload 검증을 통과한다.
+- 진행 기록 (2026-09-30):
+  - `src/features/analytics/analytics.ts` 한 파일에 `initAnalytics` / `grantAnalyticsConsent` / `track(event)`만 둔다. `track`는 인자를 문자열 1개만 받아 prop 실수를 구조적으로 막는다.
+  - 이벤트 5개만 전송한다: `page_view`(router `pathname` 변경), `login_completed`(OAuth callback이 1회 소모형 cookie로 알림), `record_created`, `record_history_opened`(목록 첫 렌더), `summary_viewed`(요약이 실제 렌더될 때).
+  - `page_view`만 동의 전 전송. 나머지는 PRD 9-3 서버 프로필 동의 이후에만 보낸다. SDK는 프로젝트 단위 init이라 이벤트별 게이트가 아니라 `track` 래퍼에서 막는다.
+  - PRD 9-3 "동의를 storage에 쓰지 않는다"를 지키기 위해 consent flag는 모듈 메모리에만 둔다. `login_completed` 판정용 표식도 local/sessionStorage 대신 `hr_just_logged_in` 즉시 소모 cookie(`src/server/auth/redirects.ts`)를 쓴다.
+  - Amplitude SDK 자동 page view/form/fileDownloads 추적은 끄고, autocapture·session replay·사용자 ID 연결은 쓰지 않는다.
+  - `NEXT_PUBLIC_AMPLITUDE_API_KEY`가 없으면 `initAnalytics`가 아무것도 하지 않는다(비활성 기본값). `.env.example`에 추가, 값은 저장소에 기록하지 않는다.
+  - `tests/analytics.test.ts`: consent 게이트 3건 + storage 미사용/prop 없음 3건.
+  - 남은 것: 실제 API key 주입 후 dev에서 5개 이벤트 수집 확인, Production release gate는 I-719에서 처리.
+
+---
+
 # 프론트엔드 완료 기준
 
 - 모든 Frontend 기능이 Mock API 기준으로 동작

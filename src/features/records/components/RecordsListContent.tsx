@@ -11,6 +11,7 @@ import { LoadingState } from "@/components/common/LoadingState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { EmptyState } from "@/components/common/EmptyState";
 import type { DailyRecordListItem } from "@/contracts";
+import { track } from "@/features/analytics/analytics";
 
 export function RecordsListContent() {
   const api = useHealthApi();
@@ -46,6 +47,8 @@ export function RecordsListContent() {
     }
 
     fetchRecords();
+    // 목록 진입 = 기록 재확인. 최초 렌더에서 1회만 센다.
+    track("record_history_opened");
 
     return () => {
       ignore = true;
