@@ -94,8 +94,8 @@ export function PrivacyContent() {
             계정 정보는 수집하지 않습니다.
           </p>
           <p className="privacy-text">
-            수집 정보는 Amplitude 및 그 재처리자를 통해 미국에서 처리됩니다. 당사는 수집 데이터로 이용자를
-            식별하거나 이용자의 건강 상태를 파악하지 않습니다.
+            수집 정보는 Google Analytics 4 및 Amplitude와 그 재처리자를 통해 미국에서 처리됩니다. 당사는
+            수집 데이터로 이용자를 식별하거나 이용자의 건강 상태를 파악하지 않습니다.
           </p>
           <p className="privacy-text">
             이 분석 기능은 건강 기록 처리 동의를 승인한 이용자에 대해서만 작동합니다.
